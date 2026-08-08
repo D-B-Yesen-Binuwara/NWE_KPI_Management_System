@@ -5,6 +5,7 @@ namespace backend.Controllers
 {
     [ApiController]
     [Route("api/tower-mtc")]
+    // Proxies tower maintenance table retrieval through the external data service.
     public class TowerMtcController : Controller
     {
         private readonly IMultiTableService _multiTableService;

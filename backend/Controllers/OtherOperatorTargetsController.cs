@@ -10,13 +10,16 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/other-operator-targets")]
     [Authorize]
+    // Provides period-specific target CRUD for Other Operator KPI definitions.
     public class OtherOperatorTargetsController : ControllerBase
     {
         private readonly AppDbContext _db;
 
+        // Handles other operator targets controller.
         public OtherOperatorTargetsController(AppDbContext db) => _db = db;
 
         [HttpGet]
+        // Gets all.
         public async Task<ActionResult<IEnumerable<OtherOperatorTargetDto>>> GetAll()
         {
             var items = await _db.OtherOperatorTargets
@@ -41,6 +44,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("{id:int}")]
+        // Gets by id.
         public async Task<ActionResult<OtherOperatorTargetDto>> GetById(int id)
         {
             var item = await _db.OtherOperatorTargets
@@ -65,6 +69,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("by-kpi/{kpiId:int}")]
+        // Gets by kpi id.
         public async Task<ActionResult<IEnumerable<OtherOperatorTargetDto>>> GetByKpiId(int kpiId)
         {
             var kpi = await _db.OtherOperatorKpis.AsNoTracking().FirstOrDefaultAsync(x => x.Id == kpiId);
@@ -90,6 +95,7 @@ namespace backend.Controllers
 
         [HttpPost]
         [Authorize(Policy = "AdminOnly")]
+        // Creates the value.
         public async Task<ActionResult<OtherOperatorTargetDto>> Create([FromBody] CreateOtherOperatorTargetDto dto)
         {
             if (dto.OtherOperatorKpiId <= 0) return BadRequest("OtherOperatorKpiId is required.");
@@ -123,6 +129,7 @@ namespace backend.Controllers
 
         [HttpPut("{id:int}")]
         [Authorize(Policy = "AdminOnly")]
+        // Updates the value.
         public async Task<IActionResult> Update(int id, [FromBody] CreateOtherOperatorTargetDto dto)
         {
             var entity = await _db.OtherOperatorTargets.FirstOrDefaultAsync(x => x.Id == id);
@@ -142,6 +149,7 @@ namespace backend.Controllers
 
         [HttpDelete("{id:int}")]
         [Authorize(Policy = "AdminOnly")]
+        // Deletes the value.
         public async Task<IActionResult> Delete(int id)
         {
             var entity = await _db.OtherOperatorTargets.FirstOrDefaultAsync(x => x.Id == id);

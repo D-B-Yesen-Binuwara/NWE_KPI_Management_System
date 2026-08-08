@@ -20,6 +20,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/ip-nw-op")]
     [Authorize]
+    // Manages IP NW OP definitions and area-specific monthly metric values.
     public class IpNwOpKpiController : ControllerBase
     {
         // Database context

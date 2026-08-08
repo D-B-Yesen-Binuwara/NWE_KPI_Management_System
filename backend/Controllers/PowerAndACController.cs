@@ -10,12 +10,15 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    // Reads Power & AC maintenance records and exposes verification changes.
     public class PowerAndACController : ControllerBase
     {
         private readonly AppDbContext _db;
         private readonly IAuthorizationService _authorizationService;
+        // Handles other kpi.
         private const int PageId = 10; // OTHER_KPI (see Program.cs seeds)
 
+        // Handles power and ac controller.
         public PowerAndACController(AppDbContext db, IAuthorizationService authorizationService)
         {
             _db = db;
@@ -24,6 +27,7 @@ namespace backend.Controllers
 
 
         [HttpGet]
+        // Gets all.
         public async Task<IActionResult> GetAll([FromQuery] int? year, [FromQuery] int? month)
         {
             var q = _db.PowerAndAC.AsNoTracking();
@@ -49,6 +53,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("{id}")]
+        // Gets by id.
         public async Task<IActionResult> GetById(int id)
         {
             var item = await _db.PowerAndAC.FindAsync(id);
@@ -57,6 +62,7 @@ namespace backend.Controllers
         }
 
         [HttpPatch("{id:int}/toggle-verified")]
+        // Toggles verified.
         public async Task<IActionResult> ToggleVerified(int id)
         {
             var auth = await _authorizationService.AuthorizeAsync(User, PageId, "EditPlatformKpiPolicy");

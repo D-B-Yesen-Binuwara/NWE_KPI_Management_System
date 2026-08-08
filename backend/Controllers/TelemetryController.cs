@@ -6,13 +6,16 @@ namespace backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    // Reads and upserts telemetry percentages consumed by overall KPI scoring.
     public class TelemetryController : ControllerBase
     {
         private readonly AppDbContext _db;
 
+        // Handles telemetry controller.
         public TelemetryController(AppDbContext db) => _db = db;
 
         [HttpGet]
+        // Gets all.
         public async Task<IActionResult> GetAll([FromQuery] int? year, [FromQuery] int? month)
         {
             var q = _db.Telemetry.AsNoTracking();
@@ -22,6 +25,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("{id}")]
+        // Gets by id.
         public async Task<IActionResult> GetById(int id)
         {
             var item = await _db.Telemetry.FindAsync(id);
@@ -30,6 +34,7 @@ namespace backend.Controllers
         }
 
         [HttpPost("upsert")]
+        // Upserts the value.
         public async Task<IActionResult> Upsert([FromBody] backend.DTOs.TelemetryDto dto)
         {
             var existing = await _db.Telemetry

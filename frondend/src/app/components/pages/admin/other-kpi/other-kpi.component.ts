@@ -29,6 +29,7 @@ export class OtherKpiComponent implements OnInit {
 
   form!: any;
 
+  // Injects the required dependencies.
   constructor(
     private fb: FormBuilder,
     private service: OtherKpiService,
@@ -36,6 +37,7 @@ export class OtherKpiComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // Build the form once, then load the existing Other KPI definitions.
     this.form = this.fb.group({
       networkEngineerKpi: ['', Validators.required],
       division: [''],
@@ -46,6 +48,7 @@ export class OtherKpiComponent implements OnInit {
   }
 
   fetchData(): void {
+    // Refresh the table from the service and update the loading/error state for the template.
     this.loading = true;
     this.service.getAll().subscribe({
       next: (res) => { this.loading = false; this.records = res; this.cdr.detectChanges(); },
@@ -54,6 +57,7 @@ export class OtherKpiComponent implements OnInit {
   }
 
   onSubmit(): void {
+    // Build the DTO and select create or update based on the current edit identifier.
     if (this.form.invalid) return;
 
     const payload: CreateOtherKpi = {
@@ -79,6 +83,7 @@ export class OtherKpiComponent implements OnInit {
   }
 
   onEdit(record: OtherKpiRecord): void {
+    // Copy a selected table row into the reactive form for editing.
     this.editingId = record.id;
     this.form.patchValue({
       networkEngineerKpi: record.networkEngineerKpi,
@@ -89,6 +94,7 @@ export class OtherKpiComponent implements OnInit {
   }
 
   onDelete(id: number): void {
+    // Confirm deletion and reload the table after the service removes the record.
     if (!confirm('Delete this record?')) return;
     this.saving = true;
     this.service.delete(id).subscribe({
@@ -99,5 +105,6 @@ export class OtherKpiComponent implements OnInit {
 
   onCancelEdit(): void { this.resetForm(); }
 
+  // Clear the form and return the page to add mode.
   private resetForm(): void { this.form.reset(); this.editingId = null; }
 }

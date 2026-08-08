@@ -17,6 +17,7 @@ namespace backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    // Verifies the external login identity and issues the application's JWT/session payload.
     public class AuthController : ControllerBase
     {
         private static readonly HashSet<byte> AssignablePageIds = new() { 1, 2, 3, 4, 6, 7, 8, 9, 10 };

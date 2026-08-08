@@ -13,7 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { FilterUtils } from '../../utils/filter.utils';
-import { formatEngineerDisplay } from '../../utils/region-display.utils';
+import { formatEngineerDisplay, getAreaLookupAliases } from '../../utils/region-display.utils';
 
 
 interface MeterData {
@@ -114,6 +114,7 @@ type MeterDetails = {
   ]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  // The dashboard reads persisted overall results for one selected month/year and never recalculates implicitly.
   private readonly now = new Date();
 
   selectedMonth = this.now.getMonth() + 1;
@@ -126,6 +127,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   regions: RegionData[] = [];
   totals: TotalsData = {};
   loading = true;
+  calculating = false;
   error: string | null = null;
   selectedDetails: MeterDetails | null = null;
   selectedRegionTitle = '';
@@ -134,7 +136,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   provinceCount = 0;
   leaCount = 0;
 
-  // Hover state management
+  // Hover state management used by region cards and individual meters.
   regionHoverStates: { [key: number]: boolean } = {};
   meterHoverStates: { [key: string]: boolean } = {};
 
@@ -151,6 +153,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private overallRows: OverallKpiResultApi[] = [];
   private engineerLookup = new Map<string, string>();
 
+  // Provides API access, change detection, and the browser-platform guard.
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
@@ -163,6 +166,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Initialize valid year options before loading region metadata and selected-period results.
     this.yearOptions = FilterUtils.generateYearOptions();
     if (!this.yearOptions.includes(this.selectedYear)) {
       this.selectedYear = this.yearOptions[this.yearOptions.length - 1];
@@ -171,14 +175,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Reserved lifecycle hook for future dashboard subscriptions or browser listeners.
   }
 
   onMonthChange(month: number): void {
+    // Reload all dashboard sources for the newly selected month.
     this.selectedMonth = Number(month);
     this.loadDashboardData();
   }
 
   onYearChange(year: number): void {
+    // Keep the selected month valid for the new year before reloading the dashboard.
     this.selectedYear = Number(year);
     const available = this.monthOptions;
     if (!available.find(m => m.value === this.selectedMonth)) {
@@ -187,7 +194,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadDashboardData();
   }
 
+  calculate(): void {
+    // Persist a fresh monthly overall calculation, then reload the dashboard snapshot.
+    if (this.loading || this.calculating) return;
+
+    this.calculating = true;
+    this.error = null;
+
+    const url = `${this.overallKpiApiBase}/calculate?month=${this.selectedMonth}&year=${this.selectedYear}`;
+
+    this.http.post(url, {}).subscribe({
+      next: () => {
+        this.calculating = false;
+        this.loadDashboardData();
+      },
+      error: (err) => {
+        console.error('Failed to calculate dashboard data', err);
+        this.calculating = false;
+        this.error = 'Unable to calculate dashboard data.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
   private sortRegionNames(a: string, b: string): number {
+    // Keep Metro first, sort numbered regions numerically, and use alphabetical order otherwise.
     if (a === 'Metro' && b !== 'Metro') return -1;
     if (b === 'Metro' && a !== 'Metro') return 1;
 
@@ -199,6 +230,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private loadDashboardData(): void {
+    // Fetch region structure, area labels, KPI definitions, and stored results together.
     if (!isPlatformBrowser(this.platformId)) {
       this.loading = false;
       return;
@@ -242,6 +274,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
         });
         this.engineerLookup = engineerLookup;
 
+        // Relate legacy NW-prefixed result codes to the official LEA code used by dashboard meters.
+        const resultAreaToDisplayArea = new Map<string, string>();
+        (regions ?? []).forEach((row) => {
+          const networkEngineer = (row as any).networkEngineer ?? (row as any).NetworkEngineer ?? '';
+          const leaCode = (row as any).leaCode ?? (row as any).LeaCode ?? '';
+          const displayCode = this.normalizeArea(leaCode || networkEngineer);
+          if (!displayCode) return;
+
+          [...getAreaLookupAliases(networkEngineer), ...getAreaLookupAliases(leaCode)]
+            .forEach((alias) => resultAreaToDisplayArea.set(alias, displayCode));
+        });
+
+        // Use one overall percentage per normalized area for the meter display.
         const percentLookup = new Map<string, number>();
         (overall ?? []).forEach((row) => {
           const code = this.normalizeArea((row as any).areaCode ?? (row as any).AreaCode ?? '');
@@ -250,6 +295,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           percentLookup.set(code, Number(raw) || 0);
         });
 
+        // Build unique region-to-area membership so each meter is rendered once.
         const regionMap = new Map<string, Set<string>>();
         (regions ?? []).forEach((row) => {
           const regionName = (row as any).region ?? (row as any).Region ?? 'Unknown';
@@ -260,6 +306,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           regionMap.set(regionName, set);
         });
 
+        // Compute summary counts from normalized region metadata.
         const uniqueRegions = new Set<string>();
         const uniqueEngineers = new Set<string>();
         const uniqueProvinces = new Set<string>();
@@ -299,6 +346,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const totals: TotalsData = {};
         percentLookup.forEach((value, code) => {
           totals[code] = value;
+          const displayCode = resultAreaToDisplayArea.get(code);
+          if (displayCode) totals[displayCode] = value;
         });
         this.totals = totals;
         this.loading = false;
@@ -320,31 +369,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private normalizeArea(value: string): string {
+    // Normalize LEA/area identifiers before joining values from different API responses.
     return String(value ?? '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
   }
 
   private normalizeName(value: string): string {
+    // Trim display metadata before using it in unique-count calculations.
     return String(value ?? '').trim();
   }
 
   valueForMeter(meter: MeterData): number {
+    // Return the persisted area percentage, defaulting to zero when no result exists.
     const key = this.normalizeArea(meter.code);
     const exact = this.totals[key];
     return Number.isFinite(exact) ? exact : 0;
   }
 
   getMaxValue(meters: MeterData[]): number {
+    // Find the highest area value in a region for the max-value highlight.
     const values = meters.map((m) => this.valueForMeter(m));
     return values.length ? Math.max(...values) : 0;
   }
 
   isMaxValue(meter: MeterData, meters: MeterData[]): boolean {
+    // Compare with a tolerance so decimal rounding does not affect the highlight.
     const value = this.valueForMeter(meter);
     const max = this.getMaxValue(meters);
     return Math.abs(value - max) < 0.0001 && max > 0;
   }
 
   getProgressBarColor(meter: MeterData, meters: MeterData[]): string {
+    // Use a green max-value accent or an opacity-scaled SLT blue for other meters.
     const value = this.valueForMeter(meter);
     const isMax = this.isMaxValue(meter, meters);
 
@@ -359,20 +414,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   getMeterTextColor(meter: MeterData, meters: MeterData[]): string {
+    // Emphasize the text of the highest-valued meter in its region.
     // 10% Accent - Green for max values (good KPIs)
     return this.isMaxValue(meter, meters) ? '#28A745' : '#000';
   }
 
   getMeterFontWeight(meter: MeterData, meters: MeterData[]): string {
+    // Return the font weight associated with the meter's max-value state.
     return this.isMaxValue(meter, meters) ? 'bold' : 'normal';
   }
 
   getEngineerForMeter(meter: MeterData): string {
+    // Resolve the display engineer from the meter first, then the normalized lookup map.
     const key = this.normalizeArea(meter.code);
     return meter.engineer || this.engineerLookup.get(key) || '—';
   }
 
   getCircularProgressBackground(meter: MeterData, meters: MeterData[]): string {
+    // Build the conic gradient used for the circular percentage indicator.
     const value = this.valueForMeter(meter);
     const maxValue = 102; // Match React's maxValue
     const normalizedValue = Math.min(value, maxValue);
@@ -387,6 +446,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   getColorForValue(value: number): string {
+    // Map KPI percentage thresholds to the dashboard's green/yellow/red palette.
     if (value > 80) {
       return '#28A745'; // Green
     } else if (value >= 30) {
@@ -397,6 +457,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   getProgressTextColor(meter: MeterData, meters: MeterData[]): string {
+    // Match the progress text color to the meter's max-value emphasis.
     // 10% Accent - Green for max values (good KPIs)
     return this.isMaxValue(meter, meters) ? '#28A745' : '#000';
   }
@@ -407,10 +468,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   trackByRegion(index: number, region: RegionData): string {
+    // Track region cards by stable title to avoid unnecessary DOM recreation.
     return region.title;
   }
 
   formatRegionTitle(value: string): string {
+    // Convert API region labels into readable headings while preserving region numbers.
     const raw = String(value ?? '').trim();
     if (!raw) return '';
 
@@ -424,10 +487,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   trackByMeter(index: number, meter: MeterData): string {
+    // Track meters by area code so percentage refreshes preserve their DOM state.
     return meter.code;
   }
 
   openMeterDetails(region: RegionData, meter: MeterData): void {
+    // Assemble the selected area's metadata, overall score, and KPI rows for the details modal.
     console.log('🎯 Opening meter details for:', { region: region.title, meter: meter.label, code: meter.code });
     const areaKey = this.normalizeArea(meter.code);
     const matchingRegion = this.regionRows.find((row) =>
@@ -443,8 +508,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const regionName = matchingRegion?.region ?? region.title;
     const leaCode = matchingRegion?.leaCode ?? meter.code;
 
+    const regionAreaAliases = new Set([
+      ...getAreaLookupAliases(meter.code),
+      ...getAreaLookupAliases(matchingRegion?.networkEngineer),
+    ]);
+
     const rows = this.overallRows.filter((row) =>
-      this.normalizeArea((row as any).areaCode ?? (row as any).AreaCode ?? '') === areaKey
+      getAreaLookupAliases((row as any).areaCode ?? (row as any).AreaCode ?? '')
+        .some((alias) => regionAreaAliases.has(alias))
     );
 
     const totalMaximumPoints = rows.reduce(
@@ -497,6 +568,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   splitEngineerName(engineer: string): { code: string; name: string } {
+    // Split the formatted engineer label into code and optional human-readable name parts.
     if (!engineer || engineer === '—') {
       return { code: '—', name: '' };
     }
@@ -514,11 +586,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   closeDetails(): void {
+    // Clear modal state and the selected region title.
     this.selectedDetails = null;
     this.selectedRegionTitle = '';
   }
 
   getKpiRowClass(row: any): string {
+    // Assign category-specific styling to KPI rows in the details modal.
     const cat = (row.category ?? '').toLowerCase();
     if (cat.includes('enterprise') || cat.includes('enteprise')) {
       return 'category-enterprise';

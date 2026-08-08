@@ -23,6 +23,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/overall-kpi-results")]
     [Authorize]
+    // Calculates monthly KPI scores from platform inputs and persists area-level overall results.
     public class OverallKpiResultsController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -157,10 +158,6 @@ namespace backend.Controllers
                 .ToListAsync();
 
             var sfMetrics = await _db.ServiceFulfilmentKpiMetrics.AsNoTracking()
-                .Where(x => x.Month == month && x.Year == year)
-                .ToListAsync();
-
-            var agedFailureMetrics = await _db.AgedNetworkFailureMetrics.AsNoTracking()
                 .Where(x => x.Month == month && x.Year == year)
                 .ToListAsync();
 
@@ -567,41 +564,6 @@ namespace backend.Controllers
                     : allNamedKpis;
 
                 var matchedKpi = FindBestMatch(kpi.KeyPerformanceIndicators, candidates);
-                if (IsAgedNetworkFailureKpi(kpi.KeyPerformanceIndicators))
-                {
-                    if (!agedFailureMetrics.Any())
-                    {
-                        continue;
-                    }
-
-                    foreach (var area in normalizedAreas)
-                    {
-                        var achieved = CalculateAgedNetworkFailureKpi(agedFailureMetrics, area);
-                        var maxPoints = normalizedAreas.Count > 0
-                            ? Math.Round((decimal)kpi.PointsApplicable / normalizedAreas.Count, 4)
-                            : 0m;
-                        var targetValue = TryParseTargetValue(kpi.DescriptionOfKPI);
-                        var pointsAchieved = CalculatePointsAchieved(maxPoints, achieved, targetValue);
-
-                        results.Add(new OverallKpiResult
-                        {
-                            KpiCode = $"KPI-{kpi.Id}",
-                            KpiDefinitionId = kpi.Id,
-                            KpiName = kpi.KeyPerformanceIndicators,
-                            Platform = kpi.Perspectives,
-                            AreaCode = area,
-                            TargetValue = targetValue ?? 0m,
-                            AchievedKpi = achieved,
-                            MaximumPointsPerKpi = maxPoints,
-                            PointsAchieved = pointsAchieved,
-                            Month = month,
-                            Year = year,
-                            CalculatedAt = nowUtc
-                        });
-                    }
-                    continue;
-                }
-
                 if (matchedKpi == null)
                 {
                     continue;
@@ -1088,6 +1050,23 @@ namespace backend.Controllers
                     .ToArray());
         }
 
+        // Returns normalized designation aliases so source rows with an optional NW/ prefix
+        // can match the corresponding engineer code stored in RegionData.
+        private static HashSet<string> GetDesignationAliases(string? value)
+        {
+            var normalized = NormalizeDesignation(StripDesignationSuffix(value ?? string.Empty));
+            var aliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (normalized == string.Empty) return aliases;
+
+            aliases.Add(normalized);
+            if (normalized.StartsWith("NW", StringComparison.OrdinalIgnoreCase) && normalized.Length > 2)
+            {
+                aliases.Add(normalized[2..]);
+            }
+
+            return aliases;
+        }
+
         private static string StripDesignationSuffix(string value)
         {
             var designation = value?.Trim() ?? string.Empty;
@@ -1104,11 +1083,12 @@ namespace backend.Controllers
             var baseDesignation = StripDesignationSuffix(designation);
             if (baseDesignation == string.Empty) return string.Empty;
 
-            var normalizedDesignation = NormalizeDesignation(baseDesignation);
+            var designationAliases = GetDesignationAliases(baseDesignation);
             var region = dbRegions.FirstOrDefault(r =>
             {
                 var engineerDesignation = StripDesignationSuffix(r.NetworkEngineer ?? string.Empty);
-                return NormalizeDesignation(engineerDesignation) == normalizedDesignation;
+                return GetDesignationAliases(engineerDesignation)
+                    .Any(designationAliases.Contains);
             });
 
             if (region != null)
@@ -1140,12 +1120,13 @@ namespace backend.Controllers
                 return CanonicalizeArea(fromBase, officialAreas);
             }
 
-            var normalizedDesignation = NormalizeArea(baseDesignation);
-            if (normalizedDesignation != string.Empty
-                && designationToArea.TryGetValue(normalizedDesignation, out var fromNormalized)
-                && !string.IsNullOrWhiteSpace(fromNormalized))
+            foreach (var alias in GetDesignationAliases(baseDesignation))
             {
-                return CanonicalizeArea(fromNormalized, officialAreas);
+                if (designationToArea.TryGetValue(alias, out var fromAlias)
+                    && !string.IsNullOrWhiteSpace(fromAlias))
+                {
+                    return CanonicalizeArea(fromAlias, officialAreas);
+                }
             }
 
             return CanonicalizeArea(baseDesignation, officialAreas);
@@ -1183,6 +1164,11 @@ namespace backend.Controllers
                 map[designation] = resolvedArea;
                 map[baseDesignation] = resolvedArea;
                 map[NormalizeArea(baseDesignation)] = resolvedArea;
+
+                foreach (var alias in GetDesignationAliases(baseDesignation))
+                {
+                    map[alias] = resolvedArea;
+                }
             }
 
             return map;
@@ -1297,13 +1283,6 @@ namespace backend.Controllers
             return totalMinutes / minutesPerNode;
         }
 
-        // =========================================================
-        // AGED NETWORK FAILURE KPI HELPERS
-        // =========================================================
-        private static bool IsAgedNetworkFailureKpi(string kpiName)
-            => (kpiName ?? string.Empty).Contains("Unavailability of Aged Network Failures",
-                StringComparison.OrdinalIgnoreCase);
-
         private static bool IsFibreFailuresRestorationKpi(string kpiName)
         {
             if (string.IsNullOrEmpty(kpiName)) return false;
@@ -1314,16 +1293,5 @@ namespace backend.Controllers
                 || normalized.Contains("fibrefailurerestoration(largescale");
         }
 
-        // Returns the percentage value directly.
-        private static decimal CalculateAgedNetworkFailureKpi(
-            List<AgedNetworkFailureMetric> metrics, string normalizedArea)
-        {
-            var areaMetrics = metrics
-                .Where(x => NormalizeArea(x.AreaCode) == normalizedArea)
-                .ToList();
-
-            if (!areaMetrics.Any()) return 0m;
-            return Math.Clamp(areaMetrics.First().Percentage, 0m, 100m);
-        }
     }
 }

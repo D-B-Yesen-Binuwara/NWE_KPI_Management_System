@@ -10,13 +10,16 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/enterprise-targets")]
     [Authorize]
+    // Provides CRUD access to Enterprise KPI targets by definition and reporting period.
     public class EnterpriseTargetsController : ControllerBase
     {
         private readonly AppDbContext _db;
 
+        // Handles enterprise targets controller.
         public EnterpriseTargetsController(AppDbContext db) => _db = db;
 
         [HttpGet]
+        // Gets all.
         public async Task<ActionResult<IEnumerable<EnterpriseTargetDto>>> GetAll()
         {
             var items = await _db.EnterpriseTargets
@@ -41,6 +44,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("{id:int}")]
+        // Gets by id.
         public async Task<ActionResult<EnterpriseTargetDto>> GetById(int id)
         {
             var item = await _db.EnterpriseTargets
@@ -65,6 +69,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("by-kpi/{kpiId:int}")]
+        // Gets by kpi id.
         public async Task<ActionResult<IEnumerable<EnterpriseTargetDto>>> GetByKpiId(int kpiId)
         {
             var kpi = await _db.EnterpriseKpis.AsNoTracking().FirstOrDefaultAsync(x => x.Id == kpiId);
@@ -90,6 +95,7 @@ namespace backend.Controllers
 
         [HttpPost]
         [Authorize(Policy = "AdminOnly")]
+        // Creates the value.
         public async Task<ActionResult<EnterpriseTargetDto>> Create([FromBody] CreateEnterpriseTargetDto dto)
         {
             if (dto.EnterpriseKpiId <= 0) return BadRequest("EnterpriseKpiId is required.");
@@ -123,6 +129,7 @@ namespace backend.Controllers
 
         [HttpPut("{id:int}")]
         [Authorize(Policy = "AdminOnly")]
+        // Updates the value.
         public async Task<IActionResult> Update(int id, [FromBody] CreateEnterpriseTargetDto dto)
         {
             var entity = await _db.EnterpriseTargets.FirstOrDefaultAsync(x => x.Id == id);
@@ -142,6 +149,7 @@ namespace backend.Controllers
 
         [HttpDelete("{id:int}")]
         [Authorize(Policy = "AdminOnly")]
+        // Deletes the value.
         public async Task<IActionResult> Delete(int id)
         {
             var entity = await _db.EnterpriseTargets.FirstOrDefaultAsync(x => x.Id == id);

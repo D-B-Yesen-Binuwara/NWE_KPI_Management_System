@@ -22,6 +22,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    // Manages OTN OP2 SLA definitions and their linked area metrics.
     public class OtnOp2Controller : ControllerBase
     {
         // Database context for OTN OP2 data

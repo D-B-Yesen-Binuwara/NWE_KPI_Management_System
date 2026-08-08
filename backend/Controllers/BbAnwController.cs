@@ -18,6 +18,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/bb-anw")]
     [Authorize]
+    // Manages BB ANW KPI headers, node details, and their authorized edit operations.
     public class BbAnwController : ControllerBase
     {
         // Database context

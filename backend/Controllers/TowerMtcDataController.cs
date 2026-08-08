@@ -12,6 +12,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/tower-mtc-data")]
     [Authorize]
+    // Handles tower maintenance records, period normalization, and verification state.
     public class TowerMtcDataController : ControllerBase
     {
         private static readonly Dictionary<string, int> MonthSequence =
@@ -25,6 +26,7 @@ namespace backend.Controllers
         private readonly ITowerMtcDataCumulativeService _cumulativeService;
         private const int PageId = 7;
 
+        // Handles tower mtc data controller.
         public TowerMtcDataController(
             AppDbContext db,
             IAuthorizationService authorizationService,
@@ -36,6 +38,7 @@ namespace backend.Controllers
         }
 
         [HttpGet]
+        // Gets the value.
         public async Task<IActionResult> Get([FromQuery] string? designation, [FromQuery] int? year)
         {
             var authResult = await _authorizationService.AuthorizeAsync(User, PageId, "ViewPagePolicy");
@@ -64,6 +67,7 @@ namespace backend.Controllers
         }
 
         [HttpPost]
+        // Upserts the value.
         public async Task<IActionResult> Upsert([FromBody] UpsertTowerMtcDataDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -117,6 +121,7 @@ namespace backend.Controllers
         }
 
         [HttpPut("{id:int}")]
+        // Updates the value.
         public async Task<IActionResult> Update(int id, [FromBody] UpsertTowerMtcDataDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -167,6 +172,7 @@ namespace backend.Controllers
             return Ok(new { id = entity.Id });
         }
 
+        // Handles authorize edit async.
         private async Task<AuthorizationResult> AuthorizeEditAsync()
         {
             if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
@@ -178,6 +184,7 @@ namespace backend.Controllers
         }
 
         [HttpPatch("{id:int}/toggle-verified")]
+        // Toggles verified.
         public async Task<IActionResult> ToggleVerified(int id)
         {
             var authResult = await _authorizationService.AuthorizeAsync(User, PageId, "EditPlatformKpiPolicy");
@@ -200,6 +207,7 @@ namespace backend.Controllers
             return Ok(new { id = entity.Id, isVerified = newValue });
         }
 
+        // Handles new.
         private static TowerMtcDataDto ToDto(TowerMtcData entity) => new()
         {
             Id = entity.Id,
@@ -213,6 +221,7 @@ namespace backend.Controllers
             IsVerified = entity.IsVerified
         };
 
+        // Normalizes request.
         private static NormalizedTowerMtcRequest NormalizeRequest(UpsertTowerMtcDataDto dto)
         {
             var designation = dto.Designation.Trim();
@@ -239,6 +248,7 @@ namespace backend.Controllers
                 null);
         }
 
+        // Gets month number.
         private static int GetMonthNumber(string? month)
         {
             if (string.IsNullOrWhiteSpace(month)) return 0;
@@ -254,6 +264,7 @@ namespace backend.Controllers
             int Attended,
             string? Error)
         {
+            // Creates an invalid request result.
             public static NormalizedTowerMtcRequest Invalid(string error) =>
                 new(string.Empty, 0, string.Empty, 0, 0, 0, error);
         }

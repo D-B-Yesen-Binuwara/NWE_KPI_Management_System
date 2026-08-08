@@ -16,6 +16,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    // Manages Enterprise KPI definitions and their area/month metric values.
     public class EnterpriseKpiController : ControllerBase
     {
         private readonly AppDbContext _db;

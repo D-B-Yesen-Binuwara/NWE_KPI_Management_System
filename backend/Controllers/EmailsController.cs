@@ -15,6 +15,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/emails")]
     [Authorize]
+    // Provides recipient reads and administrator-only recipient management endpoints.
     public class EmailsController : ControllerBase
     {
         // Database context for accessing email recipient records

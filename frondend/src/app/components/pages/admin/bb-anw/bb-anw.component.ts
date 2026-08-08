@@ -40,16 +40,19 @@ export class BbAnwComponent implements OnInit {
   /* Form data object */
   form: BbAnwHeaderDto = this.emptyForm();
 
+  // Injects the required dependencies.
   constructor(
     private service: BbAnwService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    // Load existing KPI headers before allowing the admin to edit or add records.
     this.loadData();
   }
 
   private emptyForm(): BbAnwHeaderDto {
+    // Return a clean DTO for both the add flow and form reset.
     return {
       id: undefined,
       networkEngineerKpi: '',
@@ -60,6 +63,7 @@ export class BbAnwComponent implements OnInit {
   }
 
   loadData(): void {
+    // Fetch header-level KPI records; node details are managed by the backend relationship.
     this.loading = true;
     this.error = '';
 
@@ -79,6 +83,7 @@ export class BbAnwComponent implements OnInit {
   }
 
   submitForm(): void {
+    // Select create or update based on editingId, then reload the table after persistence.
     this.saving = true;
     this.error = '';
 
@@ -105,6 +110,7 @@ export class BbAnwComponent implements OnInit {
   }
 
   editRow(row: BbAnwHeaderDto): void {
+    // Copy the selected row into a detached form model so edits do not mutate the table directly.
     this.showForm = true;
     this.editingId = row.id ?? null;
 
@@ -118,6 +124,7 @@ export class BbAnwComponent implements OnInit {
   }
 
   deleteRow(id?: number): void {
+    // Delete a header after confirmation; the backend also removes dependent node rows.
     if (typeof id !== 'number' || !confirm('Delete this KPI header? (This will also delete node rows in DB)')) return;
 
     this.saving = true;
@@ -135,12 +142,14 @@ export class BbAnwComponent implements OnInit {
   }
 
   closeForm(): void {
+    // Exit edit mode and restore a blank add form.
     this.showForm = false;
     this.editingId = null;
     this.form = this.emptyForm();
   }
 
   openForm(): void {
+    // Open a fresh add form without carrying over a previous row selection.
     this.showForm = true;
     this.editingId = null;
     this.form = this.emptyForm();
@@ -151,6 +160,7 @@ export class BbAnwComponent implements OnInit {
   }
 
   private normalizeForm(): BbAnwHeaderDto {
+    // Trim text and convert optional numeric input before sending the DTO to the API.
     return {
       id: this.editingId ?? undefined,
       networkEngineerKpi: (this.form.networkEngineerKpi || '').trim(),

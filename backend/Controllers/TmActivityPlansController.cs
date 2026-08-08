@@ -22,6 +22,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    // Manages tower-maintenance activity-plan definitions used by the admin page.
     public class TmActivityPlansController : ControllerBase
     {
         // Database context

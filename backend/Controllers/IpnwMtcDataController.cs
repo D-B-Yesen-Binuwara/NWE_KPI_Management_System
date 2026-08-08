@@ -8,6 +8,7 @@ namespace backend.Controllers
 {
     [ApiController]
     [Route("api/ipnw-mtc-data")]
+    // Handles IP NW maintenance records, normalization, and verification toggles.
     public class IpnwMtcDataController : ControllerBase
     {
         private readonly AppDbContext _db;

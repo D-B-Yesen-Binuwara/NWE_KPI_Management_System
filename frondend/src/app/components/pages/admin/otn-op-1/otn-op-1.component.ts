@@ -33,6 +33,7 @@ export class OtnOp1Component implements OnInit {
 
   form!: any;
 
+  // Injects the required dependencies.
   constructor(
     private fb: FormBuilder,
     private otnOp1Service: OtnOp1Service,
@@ -40,6 +41,7 @@ export class OtnOp1Component implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // Build the OTN OP1 form and load its existing KPI definitions.
     this.form = this.fb.group({
       networkEngineerKpi: ['', Validators.required],
       division: [''],
@@ -51,6 +53,7 @@ export class OtnOp1Component implements OnInit {
   }
 
   fetchData(): void {
+    // Retrieve the records used by the OTN OP1 management table.
     this.loading = true;
     this.otnOp1Service
       .getAllKpis()
@@ -69,6 +72,7 @@ export class OtnOp1Component implements OnInit {
   }
 
   onSubmit(): void {
+    // Build the DTO and choose update or create according to editingId.
     if (this.form.invalid) return;
 
     const payload: CreateOtnOpKpi = {
@@ -112,6 +116,7 @@ export class OtnOp1Component implements OnInit {
   }
 
   onEdit(record: OtnOpKpi): void {
+    // Copy the selected definition into the form and enter edit mode.
     this.editingId = record.id;
     this.form.patchValue({
       networkEngineerKpi: record.networkEngineerKpi,
@@ -122,6 +127,7 @@ export class OtnOp1Component implements OnInit {
   }
 
   onDelete(id: number): void {
+    // Confirm deletion, then refresh the table after the service succeeds.
     if (!confirm('Delete this record?')) return;
 
     this.saving = true;
@@ -142,10 +148,12 @@ export class OtnOp1Component implements OnInit {
   }
 
   onCancelEdit(): void {
+    // Discard the current form values and return to add mode.
     this.resetForm();
   }
 
   private resetForm(): void {
+    // Restore empty controls and clear the selected record identifier.
     this.form.reset();
     this.editingId = null;
   }

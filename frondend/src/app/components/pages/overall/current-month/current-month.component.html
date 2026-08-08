@@ -1,3 +1,4 @@
+<!-- Renders one-month filters, calculation/export actions, and synchronized KPI tables. -->
 <div class="final-tables-container">
   <header class="current-month-header">
     <div class="header-left">
@@ -73,6 +74,7 @@
     </div>
   </div>
 
+  <!-- The left table defines KPIs; the right table displays the same rows by operational area. -->
   <div class="side-by-side-tables" *ngIf="!loading && !isExcelView && !shouldShowQ1Redirect() && !(noDefinitions || noOverallResults)">
     <div class="kpi-table-container sticky-left">
       <table class="kpi-table">

@@ -22,6 +22,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/users")]
     [Authorize(Policy = "AdminOnly")]
+    // Provides administrator-only user, role, and page-assignment management endpoints.
     public class UsersController : ControllerBase
     {
         // Database context
