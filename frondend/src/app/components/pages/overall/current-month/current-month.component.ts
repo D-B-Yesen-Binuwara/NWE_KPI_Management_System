@@ -1,3 +1,4 @@
+// Presents one month's KPI definitions beside the persisted per-area calculation results.
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import {
@@ -21,7 +22,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import * as XLSX from 'xlsx';
 import { ToastrService } from 'ngx-toastr';
 import { FilterUtils } from '../../../../utils/filter.utils';
-import { formatEngineerDisplay } from '../../../../utils/region-display.utils';
+import { formatEngineerDisplay, getAreaLookupAliases } from '../../../../utils/region-display.utils';
 
 type Region = {
   id: number;
@@ -94,6 +95,7 @@ type OverallKpiResultApi = {
   styleUrls: ['./current-month.component.scss'],
 })
 export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
+  // The selected period drives definition loading, result retrieval, calculation, and export labels.
   currentMonth: string;
   currentYear: number;
   hoveredRowIndex: number | null = null;
@@ -113,11 +115,11 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   noDefinitions = false;
   noOverallResults = false;
 
-  // properties for rendering Excel sheet directly
+  // Optional Excel-rendering state retained for the legacy Q1/HTML export path.
   isExcelView = false;
   excelHtmlContent: SafeHtml | string = '';
 
-  /** same API you used in FinalTableComponent */
+  // KPI definition endpoint used to build the left-hand table structure.
   private readonly apiBase = `${environment.apiUrl}/kpi-definitions`;
 
 
@@ -138,7 +140,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }[] = [];
   engineersFlat: Region[] = [];
 
-  // Current month data
+  // Current period data and the derived per-area totals shown in the right-hand table.
   kpiRows: KpiRow[] = [];
   weightageSum = 0;
   totalPointsApplicable = 0;
@@ -149,6 +151,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly rowChangesSub = new Subscription();
   private pendingFrame: number | null = null;
 
+  // Provides API access, region metadata, layout synchronization, sanitization, and notifications.
   constructor(
     private http: HttpClient,
     private regionService: RegionService,
@@ -163,38 +166,44 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedMonth = now.getMonth() + 1;
     this.selectedYear = now.getFullYear();
 
-    // Generate year options
+    // Generate valid year options before synchronizing the initial display period.
     this.yearOptions = FilterUtils.generateYearOptions();
 
     this.syncDisplayedPeriod();
   }
 
   ngOnInit(): void {
+    // Regions are required before KPI rows can allocate one metric cell per engineer.
     this.loadRegions();
   }
 
   onMonthChange(month: number): void {
+    // Update the visible period and reload definitions/results for the selected month.
     this.selectedMonth = Number(month);
     this.syncDisplayedPeriod();
     this.loadLeftTableFromApi();
   }
 
   onYearChange(year: number): void {
+    // Update the visible period and reload definitions/results for the selected year.
     this.selectedYear = Number(year);
     this.syncDisplayedPeriod();
     this.loadLeftTableFromApi();
   }
 
   private getMonthLabel(month: number): string {
+    // Resolve the numeric month through the shared filter labels.
     return this.monthOptions.find((m) => m.value === month)?.label ?? '';
   }
 
   private syncDisplayedPeriod(): void {
+    // Keep the subtitle and export context synchronized with the selected filters.
     this.currentMonth = this.getMonthLabel(this.selectedMonth);
     this.currentYear = this.selectedYear;
   }
 
   formatHeaderLabel(value: string | null | undefined): string {
+    // Turn compact region/province identifiers into readable table headings.
     if (!value) return '';
     const withSpaces = value.replace(/([a-zA-Z])([0-9])/g, '$1 $2');
     return withSpaces
@@ -211,10 +220,12 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('window:focus')
   onWindowFocus(): void {
+    // Refresh data when the user returns to the tab after editing source values elsewhere.
     this.loadRegions();
   }
 
   ngAfterViewInit(): void {
+    // Observe row collection changes so the paired tables remain aligned after rendering.
     this.scheduleRowSync();
 
     this.rowChangesSub.add(
@@ -227,21 +238,25 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Release row-change subscriptions and cancel a pending layout frame.
     this.rowChangesSub.unsubscribe();
     if (this.pendingFrame !== null) cancelAnimationFrame(this.pendingFrame);
   }
 
   /** Manually trigger calculation/refresh of KPI results */
   calculate(): void {
+    // Explicitly recalculate and persist the selected month's overall KPI results.
     this.recalculateOverallResults();
   }
 
   @HostListener('window:resize')
   onWindowResize(): void {
+    // Re-align paired table rows after the viewport changes.
     this.scheduleRowSync();
   }
 
   private loadRegions(): void {
+    // Load and group region metadata before creating KPI metric columns.
     this.loading = true;
     this.error = null;
 
@@ -288,6 +303,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private buildRegionGrouping(): void {
+    // Build the region/province hierarchy and flatten it into the table's engineer column order.
     const regionMap = new Map<string, Map<string, Region[]>>();
 
     this.regions.forEach((item) => {
@@ -324,6 +340,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** ✅ Fetch KPI definitions from backend (LEFT table data) */
   private loadLeftTableFromApi(): void {
+    // Load KPI definitions and initialize one zeroed metric array per engineer.
     this.loading = true;
     this.error = null;
     this.noDefinitions = false;
@@ -401,10 +418,12 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public shouldShowQ1Redirect(): boolean {
+    // January-March 2026 is displayed through the dedicated Q1 page instead of this table.
     return this.selectedYear === 2026 && (this.selectedMonth === 1 || this.selectedMonth === 2 || this.selectedMonth === 3);
   }
 
   private loadOverallResultsFromApi(): void {
+    // Read stored results for the selected month and map them into KPI/engineer cells.
     this.noOverallResults = false;
     const month = this.selectedMonth;
     const year = this.selectedYear;
@@ -495,6 +514,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private recalculateOverallResults(): void {
+    // Call the backend monthly calculation endpoint, then reload all dashboard dependencies.
     this.loading = true;
     this.error = null;
 
@@ -516,23 +536,30 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private findOverallResultForEngineer(rows: OverallKpiResultApi[], engineer: Region): OverallKpiResultApi | undefined {
-    const candidates = [engineer.lea, engineer.networkEngineer]
-      .map(value => this.normalizeArea(value))
-      .filter((value, index, arr) => !!value && arr.indexOf(value) === index);
+    // Match a result using either the engineer's LEA code or network-engineer identifier.
+    const candidates = new Set([
+      ...getAreaLookupAliases(engineer.lea),
+      ...getAreaLookupAliases(engineer.networkEngineer),
+    ]);
 
-    const exact = rows.find((x) => candidates.includes(this.normalizeArea(x.areaCode)));
+    const exact = rows.find((x) =>
+      getAreaLookupAliases(x.areaCode).some(alias => candidates.has(alias))
+    );
     return exact;
   }
 
   private normalizeArea(value: string): string {
+    // Normalize area identifiers so punctuation and casing differences do not break joins.
     return (value ?? '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
   }
 
   getEngineerHeaderLabel(eng: Region): string {
+    // Format engineer code/name consistently with the Dashboard and Analytics views.
     return formatEngineerDisplay(eng.networkEngineer, eng.engName);
   }
 
   private computeTotals(): void {
+    // Recompute weightage, point, and normalized percentage totals after loading results.
     this.weightageSum = this.kpiRows.reduce(
       (sum, row) => sum + (row.weightage ?? 0),
       0
@@ -565,6 +592,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private scheduleRowSync(): void {
+    // Coalesce row changes into one animation-frame layout pass.
     if (!this.leftRowElements || !this.rightRowElements) return;
 
     if (this.pendingFrame !== null) cancelAnimationFrame(this.pendingFrame);
@@ -576,6 +604,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private syncRowHeights(): void {
+    // Set each left/right row pair to the taller rendered height for visual alignment.
     const leftRows = this.leftRowElements.toArray().map((ref) => ref.nativeElement);
     const rightRows = this.rightRowElements.toArray().map((ref) => ref.nativeElement);
 
@@ -598,6 +627,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Compute weightage dynamically based on total points (normalized to 100%) */
   getComputedWeightage(row: KpiRow): string {
+    // Express a KPI's applicable points as a percentage of the configured total.
     if (this.totalPointsApplicable <= 0) return '0.00%';
     const weightage = (Number(row.pointsApplicable ?? 0) / this.totalPointsApplicable) * 100;
     return `${weightage.toFixed(2)}%`;
@@ -605,6 +635,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Compute the total KPI percentage achieved by all engineers for a row, capped at 100% */
   getTotalKpiPercentage(row: KpiRow): number {
+    // Convert achieved points to a capped percentage of the KPI's applicable points.
     if (!row.metrics || row.metrics.length === 0 || !row.pointsApplicable) return 0;
     const totalPoints = row.metrics.reduce((sum, m) => sum + (m.pointsAchieved ?? 0), 0);
     const cappedPoints = Math.min(totalPoints, row.pointsApplicable);
@@ -612,6 +643,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async exportToExcel(): Promise<void> {
+    // Build and download a workbook containing the KPI definition and per-area performance tables.
     if (this.shouldShowQ1Redirect()) {
       this.toastr.info(
         'No KPI data is available for download for the selected month. Please use the 2026 Q1 page to view this data.',
@@ -940,11 +972,13 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getAchievedCellClass(metric: KpiMetric): string {
+    // Mark cells according to whether achieved points meet the allocated maximum.
     if (!metric || !metric.maximumPoints || metric.maximumPoints <= 0) return '';
     return metric.pointsAchieved >= metric.maximumPoints ? 'target-achieved' : 'target-failed';
   }
 
   getKpiRowClass(row: KpiRow): string {
+    // Assign category-specific styling to the KPI row.
     const cat = (row.category ?? '').toLowerCase();
     if (cat.includes('enterprise') || cat.includes('enteprise')) {
       return 'category-enterprise';

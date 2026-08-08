@@ -21,6 +21,7 @@ namespace backend.Controllers
     [Route("api/regiondata")]
     [ApiController]
     [Authorize]
+    // Manages region, province, engineer, and LEA mapping data used throughout the UI.
     public class RegionController : ControllerBase
     {
         // Database context for region data

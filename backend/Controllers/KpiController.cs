@@ -19,6 +19,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/kpis")]
     [Authorize]
+    // Provides the legacy KPI endpoints backed by the application's KPI data context.
     public class KpiController : ControllerBase
     {
         // Database context used to access KPI data

@@ -22,6 +22,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    // Manages OTN OP1 definitions and their linked area metrics.
     public class OtnOp1Controller : ControllerBase
     {
         // Database context for OTN OP data

@@ -32,6 +32,13 @@
         </select>
       </div>
     </div>
+
+    <div class="header-actions">
+      <!-- Calculate persists the selected month before the dashboard reads its values. -->
+      <button class="calculate-btn" type="button" (click)="calculate()" [disabled]="loading || calculating">
+        {{ calculating ? 'Calculating...' : 'Calculate' }}
+      </button>
+    </div>
   </div>
 
   <!-- HEADER / STATS SECTION (commented out per request) -->
@@ -91,6 +98,7 @@
   </section>
   -->
 
+  <!-- Regions are grouped cards; each meter represents one normalized operational area. -->
   <!-- REGIONS & METERS SECTION -->
   <div class="percentage-note">All values shown are percentages (%)</div>
   <div class="regions-wrapper">
@@ -140,6 +148,7 @@
   </div>
 </ng-template>
 
+<!-- The modal combines area metadata with the KPI rows used to produce its overall score. -->
 <!-- DETAILS MODAL (PASTEL, CLEAN) -->
 <div class="modal-overlay" *ngIf="selectedDetails" (click)="closeDetails()">
   <div class="modal" (click)="$event.stopPropagation()">

@@ -22,6 +22,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/mtnc-routine")]
     [Authorize]
+    // Manages routine-maintenance KPI definitions used to describe maintenance calculations.
     public class MtncRoutineController : ControllerBase
     {
         // Database context for Routine Maintenance KPI data

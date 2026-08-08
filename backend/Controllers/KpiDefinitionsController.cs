@@ -8,6 +8,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/kpi-definitions")]
     [Authorize]
+    // Exposes master KPI definition CRUD operations used by overall scoring and admin pages.
     public class KpiDefinitionsController : ControllerBase
     {
         private readonly IKpiDefinitionService _service;

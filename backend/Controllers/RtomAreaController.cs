@@ -18,6 +18,7 @@ namespace backend.Controllers
     [Route("api/rtom-areas")]
     [ApiController]
     [Authorize]
+    // Serves the area-code-to-display-name lookup used by dashboard meters.
     public class RtomAreaController : ControllerBase
     {
         // Database context for RTOM area data

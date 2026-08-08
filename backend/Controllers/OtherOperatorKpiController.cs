@@ -10,12 +10,14 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    // Manages Other Operator KPI definitions and their site/month metric values.
     public class OtherOperatorKpiController : ControllerBase
     {
         private readonly AppDbContext _db;
         private readonly IAuthorizationService _authorizationService;
         private const int PageId = 9;
 
+        // Handles other operator kpi controller.
         public OtherOperatorKpiController(AppDbContext db, IAuthorizationService authorizationService)
         {
             _db = db;
@@ -23,6 +25,7 @@ namespace backend.Controllers
         }
 
         [HttpGet]
+        // Gets all.
         public async Task<ActionResult<IEnumerable<OtherOperatorKpiDto>>> GetAll()
         {
             var items = await _db.OtherOperatorKpis
@@ -41,6 +44,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("{id:int}")]
+        // Gets by id.
         public async Task<ActionResult<OtherOperatorKpiDto>> GetById(int id)
         {
             var item = await _db.OtherOperatorKpis
@@ -60,6 +64,7 @@ namespace backend.Controllers
 
         [HttpPost]
         [Authorize(Policy = "AdminOnly")]
+        // Creates the value.
         public async Task<ActionResult<OtherOperatorKpiDto>> Create([FromBody] CreateOtherOperatorKpiDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.NetworkEngineerKpi))
@@ -84,6 +89,7 @@ namespace backend.Controllers
 
         [HttpPut("{id:int}")]
         [Authorize(Policy = "AdminOnly")]
+        // Updates the value.
         public async Task<IActionResult> Update(int id, [FromBody] CreateOtherOperatorKpiDto dto)
         {
             var entity = await _db.OtherOperatorKpis.FirstOrDefaultAsync(x => x.Id == id);
@@ -100,6 +106,7 @@ namespace backend.Controllers
 
         [HttpDelete("{id:int}")]
         [Authorize(Policy = "AdminOnly")]
+        // Deletes the value.
         public async Task<IActionResult> Delete(int id)
         {
             var entity = await _db.OtherOperatorKpis.FirstOrDefaultAsync(x => x.Id == id);
@@ -111,6 +118,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("metrics")]
+        // Gets metrics.
         public async Task<ActionResult<IEnumerable<OtherOperatorKpiMetricDto>>> GetMetrics(
             [FromQuery] byte month,
             [FromQuery] short year,
@@ -159,6 +167,7 @@ namespace backend.Controllers
         }
 
         [HttpPost("metrics")]
+        // Upserts metrics.
         public async Task<ActionResult<OtherOperatorKpiMetricDto>> UpsertMetrics([FromBody] OtherOperatorKpiMetricDto dto)
         {
             var authResult = await _authorizationService.AuthorizeAsync(User, PageId, "EditPlatformKpiPolicy");
@@ -214,6 +223,7 @@ namespace backend.Controllers
         }
 
         [HttpDelete("metrics/{metricId:int}")]
+        // Deletes metric.
         public async Task<IActionResult> DeleteMetric(int metricId)
         {
             var authResult = await _authorizationService.AuthorizeAsync(User, PageId, "EditPlatformKpiPolicy");
@@ -227,6 +237,7 @@ namespace backend.Controllers
             return NoContent();
         }
 
+        // Handles to upper invariant.
         private static string NormalizeSite(string? value) => (value ?? string.Empty).Trim().ToUpperInvariant();
     }
 }

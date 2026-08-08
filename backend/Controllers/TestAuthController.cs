@@ -15,6 +15,7 @@ namespace backend.Controllers
     // =========================================================
     [Route("api/[controller]")]
     [ApiController]
+    // Provides development endpoints for checking authentication, roles, and page policies.
     public class TestAuthController : ControllerBase
     {
         // =========================================================

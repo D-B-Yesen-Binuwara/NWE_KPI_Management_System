@@ -9,16 +9,19 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/analytics")]
     [Authorize]
+    // Exposes persisted-result aggregation and the period options used by the Analytics page.
     public class AnalyticsController : ControllerBase
     {
         private readonly AnalyticsService _analyticsService;
 
+        // Handles analytics controller.
         public AnalyticsController(AnalyticsService analyticsService)
         {
             _analyticsService = analyticsService;
         }
 
         [HttpGet]
+        // Gets cumulative analytics.
         public async Task<ActionResult<List<AnalyticsResultDto>>> GetCumulativeAnalytics(
             [FromQuery] short year,
             [FromQuery] byte startMonth,
@@ -41,6 +44,7 @@ namespace backend.Controllers
 
         [HttpGet("debug")]
         [AllowAnonymous]
+        // Returns debug data for inspection.
         public async Task<IActionResult> Debug([FromServices] backend.Data.AppDbContext db)
         {
             var kpis = await db.KpiDefinitions.ToListAsync();
@@ -49,6 +53,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("years")]
+        // Gets available years.
         public async Task<ActionResult<List<int>>> GetAvailableYears()
         {
             var years = await _analyticsService.GetAvailableYearsAsync();
@@ -56,6 +61,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("months")]
+        // Gets available months.
         public async Task<ActionResult<List<int>>> GetAvailableMonths([FromQuery] short year)
         {
             var months = await _analyticsService.GetAvailableMonthsAsync(year);

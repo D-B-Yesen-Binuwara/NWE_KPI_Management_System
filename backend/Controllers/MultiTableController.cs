@@ -18,6 +18,7 @@ namespace backend.Controllers
     // =========================================================
     [ApiController]
     [Route("api/multi-table")]
+    // Proxies grouped maintenance data retrieval through the multi-table integration service.
     public class MultiTableController : ControllerBase
     {
         // Service responsible for retrieving platform data

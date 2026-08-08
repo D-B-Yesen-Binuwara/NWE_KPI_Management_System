@@ -26,6 +26,7 @@ namespace backend.Controllers
     [Route("api/service-fulfilment-kpi")]
     
     [Authorize]
+    // Manages Service Fulfilment definitions, metrics, and monthly display metadata.
     public class ServiceFulfilmentKpiController : ControllerBase
     {
         // Database context

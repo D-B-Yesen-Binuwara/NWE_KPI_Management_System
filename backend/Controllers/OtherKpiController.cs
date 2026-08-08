@@ -11,12 +11,14 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    // Manages general Other KPI definitions and their area/month metrics.
     public class OtherKpiController : ControllerBase
     {
         private readonly AppDbContext _db;
         private readonly IAuthorizationService _authorizationService;
         private const int PageId = 10;
 
+        // Handles other kpi controller.
         public OtherKpiController(AppDbContext db, IAuthorizationService authorizationService)
         {
             _db = db;
@@ -24,6 +26,7 @@ namespace backend.Controllers
         }
 
         [HttpGet]
+        // Gets all.
         public async Task<ActionResult<IEnumerable<OtherKpiDto>>> GetAll()
         {
             var items = await _db.OtherKpis
@@ -43,6 +46,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("metrics")]
+        // Gets metrics.
         public async Task<ActionResult<IEnumerable<OtherKpiMetricDto>>> GetMetrics(
             [FromQuery] byte month,
             [FromQuery] short year,
@@ -92,6 +96,7 @@ namespace backend.Controllers
         }
 
         [HttpGet("{id:int}")]
+        // Gets by id.
         public async Task<ActionResult<OtherKpiDto>> GetById(int id)
         {
             var item = await _db.OtherKpis
@@ -112,6 +117,7 @@ namespace backend.Controllers
 
         [HttpPost]
         [Authorize(Policy = "AdminOnly")]
+        // Creates the value.
         public async Task<ActionResult<OtherKpiDto>> Create([FromBody] CreateOtherKpiDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.NetworkEngineerKpi))
@@ -140,6 +146,7 @@ namespace backend.Controllers
 
         [HttpPut("{id:int}")]
         [Authorize(Policy = "AdminOnly")]
+        // Updates the value.
         public async Task<IActionResult> Update(int id, [FromBody] CreateOtherKpiDto dto)
         {
             var entity = await _db.OtherKpis.FirstOrDefaultAsync(x => x.Id == id);
@@ -158,6 +165,7 @@ namespace backend.Controllers
 
         [HttpDelete("{id:int}")]
         [Authorize(Policy = "AdminOnly")]
+        // Deletes the value.
         public async Task<IActionResult> Delete(int id)
         {
             var entity = await _db.OtherKpis.FirstOrDefaultAsync(x => x.Id == id);
@@ -169,6 +177,7 @@ namespace backend.Controllers
         }
 
         [HttpPost("metrics")]
+        // Upserts metrics.
         public async Task<ActionResult<OtherKpiMetricDto>> UpsertMetrics([FromBody] OtherKpiMetricDto dto)
         {
             var authResult = await _authorizationService.AuthorizeAsync(User, PageId, "EditPlatformKpiPolicy");
@@ -213,6 +222,7 @@ namespace backend.Controllers
         }
 
         [HttpDelete("metrics/{metricId:int}")]
+        // Deletes metric.
         public async Task<IActionResult> DeleteMetric(int metricId)
         {
             var authResult = await _authorizationService.AuthorizeAsync(User, PageId, "EditPlatformKpiPolicy");
@@ -226,6 +236,7 @@ namespace backend.Controllers
             return NoContent();
         }
 
+        // Handles new.
         private static OtherKpiMetricDto ToMetricDto(OtherKpiMetric metric, OtherKpi kpi) => new()
         {
             Id = metric.Id,
@@ -242,6 +253,7 @@ namespace backend.Controllers
             CreatedAt = metric.CreatedAt
         };
 
+        // Handles to upper invariant.
         private static string NormalizeAreaCode(string? value) => (value ?? string.Empty).Trim().ToUpperInvariant();
     }
 }
