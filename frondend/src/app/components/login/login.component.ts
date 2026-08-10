@@ -1,9 +1,4 @@
-/*
- File: login.component.ts
- Description: User login component
- Purpose: Handles user authentication through Azure AD and local service ID login.
- Features: Azure SSO with MSAL, local login fallback, session persistence
-*/
+// Coordinates Azure account authentication with the application's service-ID verification step.
 
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
@@ -14,7 +9,7 @@ import { first } from 'rxjs/operators';
 import { loginRequest } from '../../auth-config';
 import { AuthService } from '../../services/auth.service';
 
-/* ========== LOGIN COMPONENT ========== */
+// The page is standalone and imports only the common and form features used by its template.
 
 @Component({
     selector: 'app-login',
@@ -24,17 +19,18 @@ import { AuthService } from '../../services/auth.service';
     styleUrls: ['./login.component.css']
 })
 export class LoginComponent implements OnInit {
-    /* User's service ID input for local login */
+    // Service ID supplied for the application-level user lookup after Azure authentication.
     serviceId = '';
-    /* Loading state indicator */
+    // Disables authentication controls while an Azure or backend request is in progress.
     loading = false;
-    /* Error message display */
+    // User-facing validation or authentication failure message.
     error = '';
-    /* Azure authentication status */
+    // Indicates whether MSAL has supplied an Azure account for the second login step.
     isAzureAuthenticated = false;
-    /* Authenticated Azure email address */
+    // Email/username from the active Azure account sent to backend verification.
     azureEmail = '';
 
+    // MSAL handles Azure sessions; AuthService verifies the application service ID.
     constructor(
         private authService: AuthService,
         private router: Router,
@@ -43,29 +39,29 @@ export class LoginComponent implements OnInit {
         private msalBroadcastService: MsalBroadcastService
     ) { }
 
+    // Restores an MSAL session or redirect result before checking the application's own session.
     ngOnInit(): void {
         console.log('[Login] Checking for existing Azure session and redirect results...');
 
-        // Always handle redirect promise first to capture tokens from Azure
+        // Process the redirect result first so the account is available after returning from Microsoft.
         this.msalService.instance.handleRedirectPromise().then(result => {
             if (result) {
-                //console.log('[Login] Redirect success:', result.account.username);
+                // A redirect result may be absent or may not contain an account, so guard both uses.
 				if (result.account) {
     console.log('[Login] Redirect success:', result.account.username);
 
     this.setAzureState(result.account.username);
 }
                 this.msalService.instance.setActiveAccount(result.account);
-               // this.setAzureState(result.account.username);
 			   if (result.account) {
     console.log('[Login] Redirect success:', result.account.username);
 
     this.setAzureState(result.account.username);
 }
-                return; // Stop here if we just got a redirect result
+                return; // Do not overwrite the redirect account with a later cached-account lookup.
             }
 
-            // If no redirect result, check for existing active account
+            // When no redirect just completed, reuse the active account or select the first cached account.
             const activeAccount = this.msalService.instance.getActiveAccount();
             const allAccounts = this.msalService.instance.getAllAccounts();
 
@@ -82,30 +78,31 @@ export class LoginComponent implements OnInit {
             this.error = 'Azure login failed to process redirect';
         });
 
-        // Redirect if already logged in to our backend
+        // Existing application sessions bypass the login form and return to the dashboard.
         if (this.authService.userValue) {
             this.router.navigate(['/dashboard']);
         }
     }
 
+    // Copies the selected Azure account into the state consumed by the template and backend request.
     private setAzureState(email: string) {
         this.isAzureAuthenticated = true;
         this.azureEmail = email;
     }
 
+    // Verifies the required Azure account and service ID before entering the application.
     login() {
         this.loading = true;
         this.error = '';
 
-        // Azure authentication is mandatory - users must complete Azure login first
+        // Azure authentication is mandatory; a service ID alone is not sufficient.
         if (!this.isAzureAuthenticated || !this.azureEmail) {
             this.error = 'Please sign in with Microsoft first';
             this.loading = false;
             return;
         }
 
-        // Two-step verification: Azure email (proves SLT authentication) + Service ID (from database)
-        // These are completely independent - no linking between them
+        // The backend receives both independent proofs: the authenticated Azure identity and the registered service ID.
         this.authService.verifyAzureLogin(this.azureEmail, this.serviceId)
             .pipe(first())
             .subscribe({
@@ -120,6 +117,7 @@ export class LoginComponent implements OnInit {
             });
     }
 
+    // Converts transport and backend errors into messages suitable for the login page.
     private getLoginErrorMessage(error: any): string {
         if (error?.status === 0 || error?.error instanceof ProgressEvent) {
             return 'Cannot reach the backend. Please check that the API is running and the browser can access it.';
@@ -137,6 +135,7 @@ export class LoginComponent implements OnInit {
         return 'Authentication failed. Please verify your Service ID is registered in the system.';
     }
 
+    // Starts the MSAL redirect flow; the browser returns to this component after Azure completes.
     signInWithAzure() {
         this.loading = true;
         this.error = '';
@@ -144,6 +143,7 @@ export class LoginComponent implements OnInit {
         this.msalService.loginRedirect(loginRequest);
     }
 
+    // Clears the local two-step state and signs the user out of the Azure session.
     cancelAzure() {
         this.isAzureAuthenticated = false;
         this.azureEmail = '';
@@ -154,7 +154,7 @@ export class LoginComponent implements OnInit {
     }
 
     private handleLoginSuccess() {
-        // get return url from route parameters or default to '/'
+        // Return to the route requested before login, or use the dashboard as the default destination.
         const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
         this.router.navigate([returnUrl]);
     }

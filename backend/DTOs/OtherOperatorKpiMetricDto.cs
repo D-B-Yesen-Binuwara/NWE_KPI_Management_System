@@ -2,8 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace backend.DTOs
 {
+    // Represents one site-level result recorded for an Other Operator KPI.
     public class OtherOperatorKpiMetricDto
     {
+        // Metric and parent KPI identifiers; OtherKpiId is retained as a compatibility alias.
         [JsonPropertyName("id")]
         public int? Id { get; set; }
 
@@ -17,12 +19,14 @@ namespace backend.DTOs
             set => OtherOperatorKpiId = value;
         }
 
+        // KPI and organizational context returned with the metric.
         [JsonPropertyName("networkEngineerKpi")]
         public string? NetworkEngineerKpi { get; set; }
 
         [JsonPropertyName("division")]
         public string? Division { get; set; }
 
+        // Site measurement, value, target, and contribution percentage.
         [JsonPropertyName("site")]
         public string? Site { get; set; }
 
@@ -35,6 +39,7 @@ namespace backend.DTOs
         [JsonPropertyName("kpiPercent")]
         public decimal? KpiPercent { get; set; }
 
+        // Reporting period for the metric.
         [JsonPropertyName("month")]
         public byte Month { get; set; }
 

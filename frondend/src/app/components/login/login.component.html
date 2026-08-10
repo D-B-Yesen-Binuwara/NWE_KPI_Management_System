@@ -6,6 +6,7 @@
 
 <div class="login-container">
     <div class="login-card">
+        <!-- Application branding remains visible for both authentication steps. -->
         <div class="logo-header">
             <img src="assets/slt-logo.svg" alt="SLT Mobitel" class="logo">
             <div class="title-group">
@@ -14,7 +15,7 @@
             </div>
         </div>
 
-        <!-- Azure Auth Success Message -->
+        <!-- Step 1 result: Azure has authenticated the user's Microsoft account. -->
         <div *ngIf="isAzureAuthenticated" class="azure-success-banner">
             <div class="banner-content">
                 <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -28,7 +29,7 @@
             <button class="cancel-link" (click)="cancelAzure()" title="Sign out from Microsoft">logout</button>
         </div>
 
-        <!-- Step 2: Service ID Input (Only shown if Azure Auth is successful) -->
+        <!-- Step 2: the service ID is checked against the application's user records. -->
         <ng-container *ngIf="isAzureAuthenticated">
             <div class="form-group mb-4">
                 <label for="serviceId" class="form-label">Step 2: Enter Your Service ID</label>
@@ -45,7 +46,7 @@
             </button>
         </ng-container>
 
-        <!-- Step 1: Azure Button (Only shown initially) -->
+        <!-- Step 1 action: start Azure authentication when no account is active. -->
         <ng-container *ngIf="!isAzureAuthenticated">
             <div *ngIf="error" class="error-message">
                 {{ error }}

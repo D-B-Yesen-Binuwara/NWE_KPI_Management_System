@@ -5,8 +5,10 @@ using System.Globalization;
 
 namespace backend.Services
 {
+    // Recalculates tower cumulative scheduled and attended values within each quarter.
     public class TowerMtcDataCumulativeService : ITowerMtcDataCumulativeService
     {
+        // Converts month names to numbers so source rows can be ordered chronologically.
         private static readonly Dictionary<string, int> MonthSequence =
             CultureInfo.InvariantCulture.DateTimeFormat.MonthNames
                 .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -15,11 +17,13 @@ namespace backend.Services
 
         private readonly AppDbContext _db;
 
+        // Uses the shared context to update only the source rows whose cumulative values changed.
         public TowerMtcDataCumulativeService(AppDbContext db)
         {
             _db = db;
         }
 
+        // Rebuilds every valid designation/year group and saves all changes in one batch.
         public async Task<TowerMtcDataBackfillResult> RecalculateAllAsync()
         {
             var records = await _db.TowerMtcData.ToListAsync();
@@ -48,6 +52,7 @@ namespace backend.Services
             return new TowerMtcDataBackfillResult(records.Count, groupsProcessed, recordsUpdated);
         }
 
+        // Rebuilds one designation for one year, used when a single source group is corrected.
         public async Task<int> RecalculateAsync(string designation, int year)
         {
             var normalizedDesignation = designation.Trim();
@@ -69,6 +74,7 @@ namespace backend.Services
             return recordsUpdated;
         }
 
+        // Resets totals when the month enters a new quarter and writes the running totals through the group.
         private static int RecalculateGroup(IEnumerable<TowerMtcData> records)
         {
             var runningScheduled = 0;
@@ -104,6 +110,7 @@ namespace backend.Services
             return recordsUpdated;
         }
 
+        // Invalid or missing month names return zero and are skipped by the cumulative calculation.
         private static int GetMonthNumber(string? month)
         {
             if (string.IsNullOrWhiteSpace(month)) return 0;

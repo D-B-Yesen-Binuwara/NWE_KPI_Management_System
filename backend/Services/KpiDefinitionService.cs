@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    // Exposes CRUD operations for the KPI definitions used by calculation and administration screens.
     public interface IKpiDefinitionService
     {
         Task<List<KpiDefinitionDto>> GetAllAsync();
@@ -14,15 +15,18 @@ namespace backend.Services
         Task<bool> DeleteAsync(int id);
     }
 
+    // Keeps KPI definitions and their shared-point weightages consistent after each change.
     public class KpiDefinitionService : IKpiDefinitionService
     {
         private readonly AppDbContext _db;
 
+        // Uses the application context for definition reads and updates.
         public KpiDefinitionService(AppDbContext db)
         {
             _db = db;
         }
 
+        // Reads definitions without tracking because the returned entities are mapped to DTOs only.
         public async Task<List<KpiDefinitionDto>> GetAllAsync()
         {
             var rows = await _db.KpiDefinitions
@@ -33,6 +37,7 @@ namespace backend.Services
             return rows.Select(ToDto).ToList();
         }
 
+        // Looks up one definition and returns null when the requested ID is not present.
         public async Task<KpiDefinitionDto?> GetByIdAsync(int id)
         {
             var entity = await _db.KpiDefinitions
@@ -42,6 +47,7 @@ namespace backend.Services
             return entity is null ? null : ToDto(entity);
         }
 
+        // Normalizes submitted text, persists the new definition, then recalculates all weightages.
         public async Task<KpiDefinitionDto> CreateAsync(UpsertKpiDefinitionDto dto)
         {
             var now = DateTime.UtcNow.ToString("o");
@@ -71,6 +77,7 @@ namespace backend.Services
             return ToDto(await _db.KpiDefinitions.AsNoTracking().FirstAsync(x => x.Id == entity.Id));
         }
 
+        // Updates an existing definition and reuses the shared denominator for every KPI row.
         public async Task<KpiDefinitionDto?> UpdateAsync(int id, UpsertKpiDefinitionDto dto)
         {
             var entity = await _db.KpiDefinitions.FirstOrDefaultAsync(x => x.Id == id);
@@ -93,6 +100,7 @@ namespace backend.Services
             return ToDto(await _db.KpiDefinitions.AsNoTracking().FirstAsync(x => x.Id == entity.Id));
         }
 
+        // Deletes a definition and rebalances the remaining definitions' weightages.
         public async Task<bool> DeleteAsync(int id)
         {
             var entity = await _db.KpiDefinitions.FirstOrDefaultAsync(x => x.Id == id);
@@ -105,7 +113,7 @@ namespace backend.Services
             return true;
         }
 
-        // Recalculates weightage for all rows using the shared total-points denominator.
+        // Applies one total-points denominator to every row so individual weightages remain comparable.
         private async Task RecalculateWeightageAsync(int? totalPointsOverride = null)
         {
             var rows = await _db.KpiDefinitions.ToListAsync();
@@ -124,9 +132,11 @@ namespace backend.Services
             await _db.SaveChangesAsync();
         }
 
+        // Uses the system default when a caller omits or supplies an invalid total-points value.
         private static int ResolveTotalPoints(int? value)
             => value.HasValue && value.Value > 0 ? value.Value : 36000;
 
+        // Keeps database entities from crossing the service boundary into controller responses.
         private static KpiDefinitionDto ToDto(KpiDefinition x) => new()
         {
             Id = x.Id,

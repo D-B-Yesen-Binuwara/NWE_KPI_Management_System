@@ -5,6 +5,7 @@
 
 namespace backend.DTOs
 {
+    // Region lookup data used to map network engineers to areas and display names.
     public class RegionDto
     {
         public int Id { get; set; }

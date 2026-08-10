@@ -1,3 +1,4 @@
+/* Full-page background and overlay keep the authentication card readable over the image. */
 .login-container {
   display: flex;
   justify-content: center;
@@ -24,6 +25,7 @@
     pointer-events: none;
 }
 
+/* Places the card above the background overlay without changing the page layout. */
 .login-container > * {
     position: relative;
     z-index: 2;
@@ -41,6 +43,7 @@
     max-width: 400px;
 }
 
+/* Branded header shown at the top of the authentication card. */
 .logo-header {
     background-color: #005eb8;
     padding: 1rem;
@@ -83,6 +86,7 @@
     gap: 0.5rem;
 }
 
+/* Controls for the two-step Azure account and service-ID verification flow. */
 .banner-content {
     display: flex;
     gap: 0.75rem;
@@ -209,6 +213,7 @@ label {
     font-weight: 500;
 }
 
+/* Microsoft sign-in control is visually separated from the local service-ID action. */
 .separator::before,
 .separator::after {
     content: '';
