@@ -2,6 +2,8 @@ OVERALL KPI CALCULATIONS DOCUMENTATION
 
 This document outlines the logic, formulas, and data sources for all KPI calculations implemented in the codebase (specifically within the OverallKpiResultsController).
 
+The calculations described here produce persisted monthly records in the OverallKpiResults table. The Dashboard, Overall KPI, and Analytics pages read those records; changing a filter does not itself recalculate source data.
+
 ======================================================================
 1. CORE CONCEPTS
 ======================================================================
@@ -80,16 +82,6 @@ E) Telemetry
    - Points Allocation: Node-Based Weighting (using Node_Count).
    - Data Sources: Telemetry table
 
-F) Aged Network Failures
-   - Formula: While the codebase pulls the 'Percentage' value directly from the data source, the logical definition is:
-     If HasUnavailability = 1: 
-       Achieved KPI = 0
-     Otherwise:
-       Achieved KPI = 100
-   - Points Allocation: Equal-Share Weighting across all areas.
-   - Target Value: Parsed from the KPI Description text.
-   - Data Sources: AgedNetworkFailureMetrics table
-
 ======================================================================
 3. DATA MATCHING & MAPPING
 ======================================================================
@@ -111,6 +103,20 @@ F) Aged Network Failures
   Overall KPI (%) = (Total Points Achieved / Total Max Points) * 100
 - These aggregated results are then persisted into the OverallKpiResults table for immediate access and auditing.
 
+======================================================================
+4A. CALCULATION ENTRY POINTS AND RESULT CONSUMERS
+======================================================================
+- Monthly calculation endpoint: POST /api/overall-kpi-results/calculate?month={month}&year={year}
+  Calculates and persists one month.
+- Range calculation endpoint: POST /api/overall-kpi-results/calculate-range?year={year}&startMonth={startMonth}&endMonth={endMonth}
+  Runs the monthly calculation once for every month in the requested range.
+- Read endpoint: GET /api/overall-kpi-results?month={month}&year={year}
+  Returns stored monthly results without recalculating them.
+- Dashboard Calculate uses the monthly endpoint and then reloads the selected month.
+- Overall KPI Calculate uses the same monthly endpoint.
+- Analytics Calculate uses the range endpoint and then calls AnalyticsService to aggregate the stored monthly rows.
+- The main Dashboard displays zero or empty details when no stored result exists for the selected period; it does not calculate implicitly.
+
 
 **************************************************************************************************
 **************************************************************************************************
@@ -126,7 +132,7 @@ A) IPNW and SLBN/SDH (2-Month Cycle)
      cycle = (Month + 1) / 2
      firstMonthNum = (cycle * 2) - 1
      secondMonthNum = cycle * 2
-   - Logic: Groups records by designation. It prefers the later month's cumulative data in the cycle (if available), otherwise falls back to the first month.
+   - Logic: Groups records by designation. It picks the latest available cumulative row in the active cycle that is on or before the queried month.
    - Formula: Percentage = (CumulativeAchieved / CumulativeSched) * 100
 
 B) MSAN/OLTE (Half-Year Cycle)
@@ -148,13 +154,16 @@ D) Power & AC (Quarterly Cycle)
 ======================================================================
 6. CUMULATIVE ANALYTICS AGGREGATION LOGIC
 ======================================================================
-When retrieving cumulative analytics across a span of months (startMonth to endMonth for a specific year), the system uses an Averaging mechanism:
+When retrieving analytics across a span of months (startMonth to endMonth for a specific year), the system reads the persisted OverallKpiResults rows and uses an averaging mechanism:
    - Logic (AnalyticsService): 
      Groups the 'OverallKpiResults' table by KpiDefinitionId and AreaCode.
      For each group across the selected month range, it calculates the Mean (Average) of:
      1. AchievedKpi: Average(AchievedKpi)
      2. MaximumPointsPerKpi: Average(MaximumPointsPerKpi)
      3. PointsAchieved: Average(PointsAchieved)
+   - The analytics response then calculates an area overall percentage as:
+     Analytics Overall KPI (%) = (Sum of averaged PointsAchieved / Sum of averaged MaximumPointsPerKpi) * 100
+   - Analytics therefore depends on the monthly rows being calculated first. The range Calculate action creates or refreshes those rows before the analytics GET request.
 
 ======================================================================
 7. OTHER NORMALIZATION AND SYSTEM LOGICS
@@ -181,3 +190,8 @@ C) Text Matching Overrides (Special Metrics)
 D) Data Fallback Behaviors
    - Denominator Fallbacks: In availability formulas, if the calculated total minutes or node constraints result in a zero denominator, the system auto-defaults to 100% availability.
    - KPI Definition Fallbacks: If no KPI definition exists for a selected month/year, the calculation system loads all available master definitions natively and scores against them.
+
+E) Result Refresh Behavior
+   - Recalculation is explicit. Dashboard, Overall KPI, and Analytics read stored results until a user starts a new calculation.
+   - Recalculating a period uses the current platform source data and KPI configuration for that period, so later changes to source data or targets are reflected only after recalculation.
+   - Dashboard calculates one selected month. Analytics calculates each month in the selected range and then aggregates the resulting monthly rows.

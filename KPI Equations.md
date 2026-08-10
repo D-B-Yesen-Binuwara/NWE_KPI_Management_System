@@ -34,15 +34,6 @@ Repeated Fault Percentage = (Repeated Faults / Total Customers) × 100
 
 Achieved KPI = 100 − Repeated Fault Percentage
 
-1. Aged Network Failure KPI
-
-If HasUnavailability = 1: 
-
-Achieved KPI = 0
-
-Otherwise:
-Achieved KPI = 100
-
 1. Points Achieved Calculation (No Target Defined)
 
 Points Achieved = Maximum Points × (Achieved KPI / 100)
