@@ -13,12 +13,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    // Adapts the platform-specific maintenance tables to the common structure expected by the UI.
     public class MultiTableService : IMultiTableService
     {
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
         private readonly AppDbContext _context;
 
+        // The HTTP/configuration dependencies are retained for the platform integration contract;
+        // the current implementation reads the local tables through the injected context.
         public MultiTableService(HttpClient httpClient, IConfiguration configuration, AppDbContext context)
         {
             _httpClient = httpClient;
@@ -26,6 +29,7 @@ namespace backend.Services
             _context = context;
         }
 
+        // Projects MSAN rows into a common cumulative-row shape before grouping them by month.
         public async Task<List<PlatformRecordDto>> FetchMsanDataAsync(int? year = null, int? month = null)
         {
             var rows = await _context.MsanMtcData
@@ -46,10 +50,11 @@ namespace backend.Services
             return GroupToPlatformRecords(rows);
         }
 
+        // Projects IPNW/VPN rows without selecting the schema-missing verification column.
         public async Task<List<PlatformRecordDto>> FetchVpnDataAsync(int? year = null, int? month = null)
         {
-            // Avoid selecting IsVerified from ipnwmtcdata because DB schema currently doesn't have is_verified column.
-            // We fetch required fields and (optionally) filter by year on the client side.
+            // Avoid selecting IsVerified from ipnwmtcdata because the current table schema lacks that column.
+            // The string year is therefore filtered after the database projection is materialized.
             
             var rows = await _context.IpnwMtcData
                 .Select(x => new CumulativeRow
@@ -85,6 +90,7 @@ namespace backend.Services
 
 
 
+        // Projects SLBN rows and preserves both cumulative values and raw monthly values for the UI.
         public async Task<List<PlatformRecordDto>> FetchSlbnDataAsync(int? year = null, int? month = null)
         {
             var rows = await _context.SlbnMtcData
@@ -105,6 +111,7 @@ namespace backend.Services
             return GroupToPlatformRecords(rows);
         }
 
+        // Projects tower rows, whose cumulative columns use tower-specific property names.
         public async Task<List<PlatformRecordDto>> FetchTowerDataAsync(int? year = null, int? month = null)
         {
             var rows = await _context.TowerMtcData
@@ -125,8 +132,8 @@ namespace backend.Services
         }
 
         // -------------------------------------------------------
-        // Groups cumulative rows into PlatformRecordDto per month.
-        // Column2 = CumulativeSched, Column3 = CumulativeAchieved.
+        // Groups normalized rows by month and indexes details by trimmed designation.
+        // Column2 and Column3 carry cumulative scheduled and achieved values respectively.
         // -------------------------------------------------------
         private static List<PlatformRecordDto> GroupToPlatformRecords(List<CumulativeRow> rows)
         {
@@ -152,6 +159,7 @@ namespace backend.Services
                 }).ToList();
         }
 
+        // Accepts numeric, parseable, abbreviated, and full month values from source tables.
         private static string NormalizeMonth(string? raw)
         {
             if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
@@ -182,7 +190,7 @@ namespace backend.Services
             public string? Designation { get; set; }
             public string? Month { get; set; }
 
-            // Used only for client-side year filtering (IpnwMtcData.Year is varchar)
+            // Used only for client-side year filtering because IpnwMtcData.Year is stored as varchar.
             public string? Year { get; set; }
 
             public int CumulativeSched { get; set; }
@@ -193,6 +201,7 @@ namespace backend.Services
         }
 
 
+        // Retained as a private shape for compatibility with older mapping code paths.
         private class RawRow
         {
             public string? Designation { get; set; }

@@ -8,15 +8,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    // Calculates the Power and AC routine-maintenance KPI from quarterly source rows.
     public class PowerAndACService
     {
         private readonly AppDbContext _db;
 
+        // Uses no-tracking reads because this service only derives KPI results from source data.
         public PowerAndACService(AppDbContext db)
         {
             _db = db;
         }
 
+        // Sums scheduled and attended values from the current quarter through the selected month.
         public async Task<List<RoutineMaintenanceResult>> GetPowerAndACPercentagesAsync(
             short year,
             byte month,
@@ -31,6 +34,7 @@ namespace backend.Services
                 .Where(x => x.Year == year)
                 .ToListAsync();
 
+            // Keep the source-row diagnostics available while validating imported maintenance data.
             Console.WriteLine($"DEBUG: Retrieved {rows.Count} rows from PowerAndAC table for year {year}");
             foreach (var r in rows)
             {
@@ -45,7 +49,7 @@ namespace backend.Services
                 var designation = group.Key;
                 if (string.IsNullOrEmpty(designation)) continue;
 
-                // Calculate cumulative scheduled and attended on-the-fly for the current quarter up to the queried month
+                // Power and AC does not rely on stored cumulative columns, so totals are derived for this quarter.
                 var quarterRows = group
                     .Where(x => x.Month >= startMonth && x.Month <= selectedMonthNum)
                     .ToList();
@@ -67,6 +71,7 @@ namespace backend.Services
             return results;
         }
 
+        // Resolves exact, suffix-stripped, and normalized designation keys to an area code.
         private static string ResolveAreaCode(IReadOnlyDictionary<string, string> designationToArea, string designation)
         {
             if (designationToArea.TryGetValue(designation, out var direct) && !string.IsNullOrWhiteSpace(direct))
@@ -93,6 +98,7 @@ namespace backend.Services
             return string.Empty;
         }
 
+        // Removes annotations such as a parenthesized suffix before attempting a mapping.
         private static string StripDesignationSuffix(string value)
         {
             var designation = value?.Trim() ?? string.Empty;
@@ -104,6 +110,7 @@ namespace backend.Services
                 : designation;
         }
 
+        // Makes designation comparisons tolerant of spaces, punctuation, and casing differences.
         private static string NormalizeLookupKey(string value)
             => Regex.Replace(value ?? string.Empty, "[^A-Za-z0-9]+", "").ToLowerInvariant();
     }

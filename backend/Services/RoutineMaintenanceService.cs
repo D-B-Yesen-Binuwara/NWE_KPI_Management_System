@@ -8,18 +8,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    // Calculates routine-maintenance percentages for IPNW, SLBN, and MSAN source tables.
     public class RoutineMaintenanceService
     {
         private readonly AppDbContext _db;
 
+        // Uses no-tracking reads because the service derives result values without editing source rows.
         public RoutineMaintenanceService(AppDbContext db)
         {
             _db = db;
         }
 
+        // Kept for the legacy service contract; period-aware platform methods perform the actual calculations.
         public Task<List<RoutineMaintenanceResult>> GetResultsAsync()
         {
-            // TODO: implement retrieval logic using _db
+            // No period or designation-to-area map is available in this overload, so it returns no derived rows.
             return Task.FromResult(new List<RoutineMaintenanceResult>());
         }
 
@@ -28,7 +31,8 @@ namespace backend.Services
             byte month,
             Dictionary<string, string> designationToArea)
         {
-            // Determine the 2-month cycle for the provided month
+            // IPNW uses two-month cycles; only rows in the selected cycle up to the requested month are eligible.
+            var selectedMonthNum = (int)month;
             var cycle = (month + 1) / 2; // 1..6
             var firstMonthNum = (cycle * 2) - 1;
             var secondMonthNum = cycle * 2;
@@ -36,8 +40,9 @@ namespace backend.Services
             var monthNames = CultureInfo.InvariantCulture.DateTimeFormat.MonthNames
                 .Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
 
-            var m1 = monthNames[firstMonthNum - 1];
-            var m2 = monthNames[secondMonthNum - 1];
+            var monthSeq = monthNames
+                .Select((name, idx) => new { Name = name, Num = idx + 1 })
+                .ToDictionary(x => x.Name, x => x.Num, System.StringComparer.OrdinalIgnoreCase);
 
             var rows = await _db.IpnwMtcData
                 .AsNoTracking()
@@ -47,10 +52,10 @@ namespace backend.Services
                 .Where(x =>
                     int.TryParse(x.Year?.ToString(), out var y)
                     && y == year
-                    && (
-                        string.Equals(x.Month?.Trim(), m1, System.StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(x.Month?.Trim(), m2, System.StringComparison.OrdinalIgnoreCase)
-                    ))
+                    && monthSeq.TryGetValue(x.Month?.Trim() ?? string.Empty, out var mn)
+                    && mn >= firstMonthNum
+                    && mn <= secondMonthNum
+                    && mn <= selectedMonthNum)
                 .ToList();
 
             var results = new List<RoutineMaintenanceResult>();
@@ -59,12 +64,15 @@ namespace backend.Services
 
             foreach (var group in groups)
             {
-                // Prefer the later month (m2) if present, else m1
-                var selected = group.FirstOrDefault(r => string.Equals(r.Month?.Trim(), m2, System.StringComparison.OrdinalIgnoreCase))
-                               ?? group.FirstOrDefault(r => string.Equals(r.Month?.Trim(), m1, System.StringComparison.OrdinalIgnoreCase));
+                var candidate = group
+                    .Select(r => new { Row = r, MonthNum = monthSeq.TryGetValue(r.Month?.Trim() ?? string.Empty, out var mnum) ? mnum : 0 })
+                    .Where(x => x.MonthNum > 0 && x.MonthNum <= selectedMonthNum)
+                    .OrderByDescending(x => x.MonthNum)
+                    .FirstOrDefault();
 
-                if (selected == null) continue; // nothing to compute
+                if (candidate == null) continue; // nothing to compute
 
+                var selected = candidate.Row;
                 var designation = (selected.Designation ?? string.Empty).Trim();
 
                 var sched = (decimal)selected.CumulativeSched;
@@ -87,7 +95,8 @@ namespace backend.Services
             byte month,
             Dictionary<string, string> designationToArea)
         {
-            // Determine the 2-month cycle for the provided month
+            // SLBN uses the same two-month cycle rule as IPNW.
+            var selectedMonthNum = (int)month;
             var cycle = (month + 1) / 2; // 1..6
             var firstMonthNum = (cycle * 2) - 1;
             var secondMonthNum = cycle * 2;
@@ -95,8 +104,9 @@ namespace backend.Services
             var monthNames = CultureInfo.InvariantCulture.DateTimeFormat.MonthNames
                 .Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
 
-            var m1 = monthNames[firstMonthNum - 1];
-            var m2 = monthNames[secondMonthNum - 1];
+            var monthSeq = monthNames
+                .Select((name, idx) => new { Name = name, Num = idx + 1 })
+                .ToDictionary(x => x.Name, x => x.Num, System.StringComparer.OrdinalIgnoreCase);
 
             var rows = await _db.SlbnMtcData
                 .AsNoTracking()
@@ -106,10 +116,10 @@ namespace backend.Services
                 .Where(x =>
                     int.TryParse(x.Year?.ToString(), out var y)
                     && y == year
-                    && (
-                        string.Equals(x.Month?.Trim(), m1, System.StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(x.Month?.Trim(), m2, System.StringComparison.OrdinalIgnoreCase)
-                    ))
+                    && monthSeq.TryGetValue(x.Month?.Trim() ?? string.Empty, out var mn)
+                    && mn >= firstMonthNum
+                    && mn <= secondMonthNum
+                    && mn <= selectedMonthNum)
                 .ToList();
 
             var results = new List<RoutineMaintenanceResult>();
@@ -118,12 +128,15 @@ namespace backend.Services
 
             foreach (var group in groups)
             {
-                // Prefer the later month (m2) if present, else m1
-                var selected = group.FirstOrDefault(r => string.Equals(r.Month?.Trim(), m2, System.StringComparison.OrdinalIgnoreCase))
-                               ?? group.FirstOrDefault(r => string.Equals(r.Month?.Trim(), m1, System.StringComparison.OrdinalIgnoreCase));
+                var candidate = group
+                    .Select(r => new { Row = r, MonthNum = monthSeq.TryGetValue(r.Month?.Trim() ?? string.Empty, out var mnum) ? mnum : 0 })
+                    .Where(x => x.MonthNum > 0 && x.MonthNum <= selectedMonthNum)
+                    .OrderByDescending(x => x.MonthNum)
+                    .FirstOrDefault();
 
-                if (selected == null) continue;
+                if (candidate == null) continue;
 
+                var selected = candidate.Row;
                 var designation = (selected.Designation ?? string.Empty).Trim();
 
                 var sched = (decimal)selected.CumulativeSched;
@@ -146,7 +159,7 @@ namespace backend.Services
             byte month,
             Dictionary<string, string> designationToArea)
         {
-            // Determine half-year cycle start/end
+            // MSAN accumulates within the current six-month cycle: January-June or July-December.
             var selectedMonthNum = (int)month;
             var cycleStart = selectedMonthNum <= 6 ? 1 : 7;
             var cycleEnd = selectedMonthNum <= 6 ? 6 : 12;
@@ -203,6 +216,7 @@ namespace backend.Services
             return results;
         }
 
+        // Converts cumulative scheduled/achieved totals to a bounded percentage.
         private static decimal CalculatePercentage(
             decimal sched,
             decimal achieved)
@@ -211,6 +225,7 @@ namespace backend.Services
             return decimal.Round(Math.Clamp((achieved / sched) * 100m, 0m, 100m), 2);
         }
 
+        // Resolves exact, suffix-stripped, and normalized designation keys to an area code.
         private static string ResolveAreaCode(IReadOnlyDictionary<string, string> designationToArea, string designation)
         {
             if (designationToArea.TryGetValue(designation, out var direct) && !string.IsNullOrWhiteSpace(direct))
@@ -237,6 +252,7 @@ namespace backend.Services
             return string.Empty;
         }
 
+        // Removes annotations such as a parenthesized suffix before attempting a mapping.
         private static string StripDesignationSuffix(string value)
         {
             var designation = value?.Trim() ?? string.Empty;
@@ -248,6 +264,7 @@ namespace backend.Services
                 : designation;
         }
 
+        // Makes designation comparisons tolerant of spaces, punctuation, and casing differences.
         private static string NormalizeLookupKey(string value)
             => Regex.Replace(value ?? string.Empty, "[^A-Za-z0-9]+", "").ToLowerInvariant();
     }

@@ -8,15 +8,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    // Reads tower maintenance rows and exposes the latest quarterly cumulative percentage per designation.
     public class TowerMaintenanceService
     {
         private readonly AppDbContext _db;
 
+        // Uses no-tracking reads because this service derives results without editing source rows.
         public TowerMaintenanceService(AppDbContext db)
         {
             _db = db;
         }
 
+        // Selects the latest available row through the requested month for each tower designation.
         public async Task<List<RoutineMaintenanceResult>> GetTowerPercentagesAsync(
             short year,
             byte month,
@@ -71,6 +74,7 @@ namespace backend.Services
             return results;
         }
 
+        // Resolves exact, suffix-stripped, and normalized designation keys to an area code.
         private static string ResolveAreaCode(IReadOnlyDictionary<string, string> designationToArea, string designation)
         {
             if (designationToArea.TryGetValue(designation, out var direct) && !string.IsNullOrWhiteSpace(direct))
@@ -97,6 +101,7 @@ namespace backend.Services
             return string.Empty;
         }
 
+        // Removes annotations such as a parenthesized suffix before attempting a mapping.
         private static string StripDesignationSuffix(string value)
         {
             var designation = value?.Trim() ?? string.Empty;
@@ -108,13 +113,15 @@ namespace backend.Services
                 : designation;
         }
 
+        // Makes designation comparisons tolerant of spaces, punctuation, and casing differences.
         private static string NormalizeLookupKey(string value)
             => Regex.Replace(value ?? string.Empty, "[^A-Za-z0-9]+", "").ToLowerInvariant();
     }
 
-    // Small helper holder to reuse CalculatePercentage without circular dependencies
+    // Shared percentage calculation for routine-maintenance platform services.
     internal static class RoutineMaintenanceServiceHelpers
     {
+        // Returns a bounded percentage and avoids division by zero when no work was scheduled.
         public static decimal CalculatePercentage(decimal sched, decimal achieved)
         {
             if (sched == 0m) return 0m;
