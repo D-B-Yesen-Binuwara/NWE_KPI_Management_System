@@ -7,8 +7,10 @@ using System.Text.Json.Serialization;
 
 namespace backend.DTOs
 {
+    // Response DTO for an Other KPI definition.
     public class OtherKpiDto
     {
+        // Definition identity, name, organizational context, and contribution percentage.
         [JsonPropertyName("id")]
         public int Id { get; set; }
 

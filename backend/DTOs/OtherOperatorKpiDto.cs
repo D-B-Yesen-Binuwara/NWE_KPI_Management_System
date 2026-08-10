@@ -2,8 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace backend.DTOs
 {
+    // Response DTO for an Other Operator KPI definition.
     public class OtherOperatorKpiDto
     {
+        // Stable JSON names define the contract consumed by the frontend.
         [JsonPropertyName("id")]
         public int Id { get; set; }
 

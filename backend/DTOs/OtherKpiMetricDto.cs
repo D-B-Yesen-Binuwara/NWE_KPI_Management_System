@@ -3,14 +3,17 @@ using System.Text.Json.Serialization;
 
 namespace backend.DTOs
 {
+    // Represents one area/site metric recorded for an Other KPI and reporting period.
     public class OtherKpiMetricDto
     {
+        // Metric and parent KPI identifiers.
         [JsonPropertyName("id")]
         public int? Id { get; set; }
 
         [JsonPropertyName("otherKpiId")]
         public int OtherKpiId { get; set; }
 
+        // KPI definition and organizational context returned with the metric.
         [JsonPropertyName("networkEngineerKpi")]
         public string? NetworkEngineerKpi { get; set; }
 
@@ -23,6 +26,7 @@ namespace backend.DTOs
         [JsonPropertyName("kpiPercent")]
         public decimal? KpiPercent { get; set; }
 
+        // Area/site and source fault/customer counts used by KPI calculations.
         [JsonPropertyName("areaCode")]
         public string AreaCode { get; set; } = string.Empty;
 
@@ -47,6 +51,7 @@ namespace backend.DTOs
         [JsonPropertyName("clearedWithin4Hrs")]
         public int? ClearedWithin4Hrs { get; set; }
 
+        // Calculated KPI value and period metadata.
         [JsonPropertyName("kpiValue")]
         public decimal? KpiValue { get; set; }
 

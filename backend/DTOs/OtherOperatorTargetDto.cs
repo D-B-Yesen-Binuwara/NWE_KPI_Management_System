@@ -2,14 +2,17 @@ using System.Text.Json.Serialization;
 
 namespace backend.DTOs
 {
+    // Response DTO for an Other Operator KPI target assigned to a reporting period.
     public class OtherOperatorTargetDto
     {
+        // Target record and parent KPI identifier.
         [JsonPropertyName("id")]
         public int Id { get; set; }
 
         [JsonPropertyName("otherOperatorKpiId")]
         public int OtherOperatorKpiId { get; set; }
 
+        // KPI and organizational context returned for display.
         [JsonPropertyName("networkEngineerKpi")]
         public string? NetworkEngineerKpi { get; set; }
 
@@ -19,6 +22,7 @@ namespace backend.DTOs
         [JsonPropertyName("section")]
         public string? Section { get; set; }
 
+        // Period to which the target applies.
         [JsonPropertyName("month")]
         public byte Month { get; set; }
 
@@ -26,8 +30,10 @@ namespace backend.DTOs
         public short Year { get; set; }
     }
 
+    // Request body used to create an Other Operator KPI target.
     public class CreateOtherOperatorTargetDto
     {
+        // Parent KPI and target period supplied by the client.
         [JsonPropertyName("otherOperatorKpiId")]
         public int OtherOperatorKpiId { get; set; }
 

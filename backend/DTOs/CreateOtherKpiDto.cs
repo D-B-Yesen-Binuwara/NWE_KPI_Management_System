@@ -7,8 +7,10 @@ using System.Text.Json.Serialization;
 
 namespace backend.DTOs
 {
+    // Request body used to create or update an Other KPI definition.
     public class CreateOtherKpiDto
     {
+        // KPI name and organizational context are serialized with explicit API field names.
         [JsonPropertyName("networkEngineerKpi")]
         public string NetworkEngineerKpi { get; set; } = string.Empty;
 
