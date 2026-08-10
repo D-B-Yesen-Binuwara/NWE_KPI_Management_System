@@ -70,6 +70,7 @@ export class AdminDropdownComponent implements OnChanges {
 
   private readonly authService = inject(AuthService);
 
+  // Injects the required dependencies.
   constructor(private router: Router) {}
 
   /* Rebuild sections when options input changes */

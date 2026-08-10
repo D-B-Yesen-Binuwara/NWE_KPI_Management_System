@@ -92,6 +92,7 @@ export class Q1Component implements OnInit, AfterViewInit, OnDestroy {
 
   private readonly apiBase = `${environment.apiUrl}/kpi-definitions`;
 
+  // Injects the required dependencies.
   constructor(
     private regionService: RegionService,
     private http: HttpClient,

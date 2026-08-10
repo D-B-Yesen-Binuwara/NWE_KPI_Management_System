@@ -13,6 +13,19 @@ export function normalizeLookupKey(value: string | null | undefined): string {
   return String(value ?? '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
 }
 
+export function getAreaLookupAliases(value: string | null | undefined): string[] {
+  // Support source designations that optionally carry the NW prefix while preserving the original key.
+  const normalized = normalizeLookupKey(value);
+  if (!normalized) return [];
+
+  const aliases = [normalized];
+  if (normalized.startsWith('nw') && normalized.length > 2) {
+    aliases.push(normalized.slice(2));
+  }
+
+  return Array.from(new Set(aliases));
+}
+
 export function formatEngineerDisplay(
   networkEngineer: string | null | undefined,
   engName?: string | null

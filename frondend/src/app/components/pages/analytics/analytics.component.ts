@@ -20,7 +20,7 @@ import { environment } from '../../../../environments/environment';
 import { AnalyticsService } from '../../../services/analytics.service';
 import { FilterUtils } from '../../../utils/filter.utils';
 import { Region as RegionApi, RegionService } from '../../../services/region.service';
-import { formatEngineerDisplay } from '../../../utils/region-display.utils';
+import { formatEngineerDisplay, getAreaLookupAliases } from '../../../utils/region-display.utils';
 
 type Region = {
   id: number;
@@ -485,20 +485,21 @@ return {
 
   private findEngineerIndexByArea(areaCode: string): number | undefined {
     // Resolve an API area code to the flat engineer index used by each KPI row's metric array.
-    const normalizedTarget = this.normalizeArea(areaCode);
-    if (!normalizedTarget) return undefined;
+    const targetAliases = new Set(getAreaLookupAliases(areaCode));
+    if (!targetAliases.size) return undefined;
 
     const exactIndex = this.engineersFlat.findIndex(eng =>
-      this.getEngineerAreaCandidates(eng).some(candidate => candidate === normalizedTarget)
+      this.getEngineerAreaCandidates(eng).some(candidate => targetAliases.has(candidate))
     );
     return exactIndex >= 0 ? exactIndex : undefined;
   }
 
   private getEngineerAreaCandidates(engineer: Region): string[] {
     // Accept either the LEA code or network-engineer code when matching a result to a region.
-    return [engineer.lea, engineer.networkEngineer]
-      .map(value => this.normalizeArea(value))
-      .filter((value, index, arr) => !!value && arr.indexOf(value) === index);
+    return Array.from(new Set(
+      [engineer.lea, engineer.networkEngineer]
+        .flatMap(value => getAreaLookupAliases(value))
+    ));
   }
 
   private normalizeArea(value: string | null | undefined): string {

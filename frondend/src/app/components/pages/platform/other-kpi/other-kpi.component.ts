@@ -106,7 +106,7 @@ export class OtherKpiComponent implements OnInit {
     this.refresh();
   }
 
-  // ── Region + Telemetry loading (same pattern as node-failures) ──
+  // Region and telemetry loading for the Other KPI page.
 
   // Loads region data, builds the area map, and triggers telemetry refresh.
   private loadRegions(): void {

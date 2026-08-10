@@ -23,6 +23,7 @@ export class InfoPageComponent {
   /* Page description from route data */
   protected readonly description: string;
 
+  // Injects the required dependencies.
   constructor(private readonly route: ActivatedRoute) {
     /* Read title from route data, default to 'Details' */
     this.pageTitle = this.route.snapshot.data['title'] ?? 'Details';
