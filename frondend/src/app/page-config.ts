@@ -74,12 +74,6 @@ export const platformNavOptions: NavOption[] = [
     path: 'platform/tower-mtce-achievement',
     title: 'Platform KPI — Other Operator'
   },
-  // Temporarily removed from the Platform KPI dropdown
-  // {
-  //   label: 'Aged Network Failures',
-  //   path: 'platform/node-failures',
-  //   title: 'Platform KPI — Aged Network Failures'
-  // }
 ];
 
 /* ========== ADMIN MANAGEMENT NAVIGATION ========== */

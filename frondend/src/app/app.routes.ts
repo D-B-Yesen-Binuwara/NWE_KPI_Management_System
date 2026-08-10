@@ -71,9 +71,6 @@ export const routes: Routes = [
   { path: 'platform/routine-mtnc', component: RoutineMtncComponent, canActivate: [AuthGuard] },
   { path: 'platform/tower-mtce-achievement', component: OtherOperatorComponent, canActivate: [AuthGuard] },
   
-  /*node failure availability*/ 
-  { path: 'platform/node-failures', loadComponent: () => import('./components/pages/platform/node-failures/node-failures.component').then(m => m.NodeFailuresComponent), canActivate: [AuthGuard] },
-  
   /* Admin Routes - requires Admin or SuperAdmin role */
   { path: 'admin/admin-registration', component: AdminRegistrationComponent, canActivate: [AuthGuard], data: { roles: ['Admin', 'SuperAdmin'] } },
   { path: 'admin/user-registration', component: UserRegistrationComponent, canActivate: [AuthGuard], data: { roles: ['Admin', 'SuperAdmin'] } },

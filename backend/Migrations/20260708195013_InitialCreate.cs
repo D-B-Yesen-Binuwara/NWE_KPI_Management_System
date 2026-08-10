@@ -15,24 +15,6 @@ namespace backend.Migrations
                 name: "dbo");
 
             migrationBuilder.CreateTable(
-                name: "AgedNetworkFailureMetrics",
-                schema: "dbo",
-                columns: table => new
-                {
-                    id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    area_code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    month = table.Column<int>(type: "int", nullable: false),
-                    year = table.Column<int>(type: "int", nullable: false),
-                    percentage = table.Column<decimal>(type: "decimal(5,2)", nullable: false),
-                    remarks = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AgedNetworkFailureMetrics", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "BbAnwKpi",
                 schema: "dbo",
                 columns: table => new
@@ -786,13 +768,6 @@ namespace backend.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "UQ_AgedNetworkFailureMetrics_Row",
-                schema: "dbo",
-                table: "AgedNetworkFailureMetrics",
-                columns: new[] { "area_code", "month", "year" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "UQ_BbAnwKpiNode_Row",
                 schema: "dbo",
                 table: "BbAnwKpiNode",
@@ -932,10 +907,6 @@ namespace backend.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "AgedNetworkFailureMetrics",
-                schema: "dbo");
-
             migrationBuilder.DropTable(
                 name: "BbAnwKpiNode",
                 schema: "dbo");

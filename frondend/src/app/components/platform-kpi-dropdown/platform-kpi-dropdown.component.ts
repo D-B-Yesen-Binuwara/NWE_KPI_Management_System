@@ -31,6 +31,7 @@ export class PlatformKpiDropdownComponent {
   /* Output: Emit selected route path */
   @Output() selection = new EventEmitter<string>();
 
+  // Injects the required dependencies.
   constructor(private router: Router) {}
 
   /* Toggle dropdown menu visibility */

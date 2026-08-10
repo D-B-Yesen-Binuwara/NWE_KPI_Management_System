@@ -22,48 +22,6 @@ namespace backend.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("backend.Models.AgedNetworkFailureMetric", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AreaCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("area_code");
-
-                    b.Property<int>("Month")
-                        .HasColumnType("int")
-                        .HasColumnName("month");
-
-                    b.Property<decimal>("Percentage")
-                        .HasColumnType("decimal(5,2)")
-                        .HasColumnName("percentage");
-
-                    b.Property<string>("Remarks")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
-                        .HasColumnName("remarks");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("int")
-                        .HasColumnName("year");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AreaCode", "Month", "Year")
-                        .IsUnique()
-                        .HasDatabaseName("UQ_AgedNetworkFailureMetrics_Row");
-
-                    b.ToTable("AgedNetworkFailureMetrics", "dbo");
-                });
-
             modelBuilder.Entity("backend.Models.BbAnwKpi", b =>
                 {
                     b.Property<int>("Id")

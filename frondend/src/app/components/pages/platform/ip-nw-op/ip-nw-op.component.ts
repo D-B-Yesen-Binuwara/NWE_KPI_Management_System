@@ -10,9 +10,6 @@ import { AuthService } from '../../../../services/auth.service';
 import { FilterUtils } from '../../../../utils/filter.utils';
 import { buildEngineerDisplayMap, mapRegionRecords } from '../../../../utils/region-display.utils';
 
-
-const AGED_FAILURE_PLATFORM = 'IP_NW_OP';
-
 interface RegionRow {
   region?: string;
   province?: string;
@@ -319,16 +316,6 @@ export class IpNwOpComponent implements OnInit, OnDestroy {
       } as IpNwOpMetric;
     });
   }
-
-
-
-  // NOTE: Aged Network Failure metrics are now shown/edited in the Node Failures page (platform/node-failures)
-  // so this page no longer fetches or persists them.
-
-
-  // Aged Network Failure metrics are now shown/edited in: platform/node-failures
-  // Intentionally no API calls from IP NW OP page.
-
 
   // Handles changes to the selected month and year, reloading data.
   onMonthYearChange(): void {

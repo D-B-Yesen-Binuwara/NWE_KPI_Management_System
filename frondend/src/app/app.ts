@@ -64,6 +64,7 @@ export class App implements OnInit {
   /* Last error encountered */
   protected lastError: string | null = null;
 
+  // Injects the required dependencies.
   constructor(private authService: AuthService, private router: Router) { }
 
   /* Initialize component and set up router event subscriptions */

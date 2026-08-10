@@ -17,6 +17,7 @@ export class HasRoleDirective implements OnInit {
     /* Array of allowed roles for element visibility */
     @Input() appHasRole: string[] = [];
 
+    // Injects the required dependencies.
     constructor(
         private templateRef: TemplateRef<any>,
         private viewContainer: ViewContainerRef,
@@ -24,6 +25,7 @@ export class HasRoleDirective implements OnInit {
     ) { }
 
     /* Check user role and show/hide element accordingly */
+    // Loads the initial component state.
     ngOnInit() {
         /* Get current user's role */
         const userRole = this.authService.getRole();
