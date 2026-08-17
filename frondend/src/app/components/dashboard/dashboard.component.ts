@@ -76,6 +76,15 @@ type MeterDetails = {
   kpiRows: MeterKpiRow[];
 };
 
+type QuarterKey = 'Q2' | 'Q3';
+
+// The dashboard supports the two requested financial/reporting quarters.
+// Keeping the month ranges in one place prevents the button handlers and data loader from drifting apart.
+const QUARTER_MONTHS: Record<QuarterKey, number[]> = {
+  Q2: [4, 5, 6],
+  Q3: [7, 8, 9],
+};
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -119,6 +128,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   selectedMonth = this.now.getMonth() + 1;
   selectedYear = this.now.getFullYear();
+
+  // A null value means the dashboard is in normal single-month mode.
+  activeQuarter: QuarterKey | null = null;
 
 
   get monthOptions(): { label: string; value: number }[] { return FilterUtils.getMonthOptions(this.selectedYear); }
@@ -165,6 +177,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return found ? found.label : '';
   }
 
+  get currentPeriodLabel(): string {
+    // Keep the header text aligned with the data currently shown in the meters.
+    if (this.activeQuarter === 'Q2') return 'Q2 (April - June)';
+    if (this.activeQuarter === 'Q3') return 'Q3 (July - September)';
+    return this.currentMonthLabel;
+  }
+
   ngOnInit(): void {
     // Initialize valid year options before loading region metadata and selected-period results.
     this.yearOptions = FilterUtils.generateYearOptions();
@@ -179,9 +198,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   onMonthChange(month: number): void {
-    // Reload all dashboard sources for the newly selected month.
+    // Reload the selected month, or keep the active quarter view if the user changes
+    // the filter while a quarter is selected.
     this.selectedMonth = Number(month);
-    this.loadDashboardData();
+    this.loadDashboardData(this.getActiveMonths());
   }
 
   onYearChange(year: number): void {
@@ -191,13 +211,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!available.find(m => m.value === this.selectedMonth)) {
       this.selectedMonth = available[0]?.value ?? this.selectedMonth;
     }
-    this.loadDashboardData();
+    this.loadDashboardData(this.getActiveMonths());
   }
 
   calculate(): void {
-    // Persist a fresh monthly overall calculation, then reload the dashboard snapshot.
+    // The regular Calculate button always returns the dashboard to single-month mode.
+    // This makes the user's explicit month/year selection take precedence over a quarter.
     if (this.loading || this.calculating) return;
 
+    this.activeQuarter = null;
     this.calculating = true;
     this.error = null;
 
@@ -217,6 +239,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  calculateQuarter(quarter: QuarterKey): void {
+    // Quarter buttons are mutually exclusive because activeQuarter stores only one value.
+    if (this.loading || this.calculating) return;
+
+    this.activeQuarter = quarter;
+    this.calculating = true;
+    this.error = null;
+
+    const months = this.getQuarterMonths(quarter);
+    const url = `${this.overallKpiApiBase}/calculate-range?year=${this.selectedYear}`
+      + `&startMonth=${months[0]}&endMonth=${months[months.length - 1]}`;
+
+    this.http.post(url, {}).subscribe({
+      next: () => {
+        this.calculating = false;
+        // Reload all three persisted monthly results so the dashboard can display
+        // the quarter aggregate using the same area meters as monthly mode.
+        this.loadDashboardData(months);
+      },
+      error: (err) => {
+        console.error(`Failed to calculate ${quarter} dashboard data`, err);
+        this.calculating = false;
+        this.error = `Unable to calculate ${quarter} dashboard data.`;
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private getQuarterMonths(quarter: QuarterKey): number[] {
+    // Return a copy so callers cannot accidentally mutate the shared quarter definition.
+    return [...QUARTER_MONTHS[quarter]];
+  }
+
+  private getActiveMonths(): number[] {
+    return this.activeQuarter ? this.getQuarterMonths(this.activeQuarter) : [this.selectedMonth];
+  }
+
   private sortRegionNames(a: string, b: string): number {
     // Keep Metro first, sort numbered regions numerically, and use alphabetical order otherwise.
     if (a === 'Metro' && b !== 'Metro') return -1;
@@ -229,8 +288,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return a.localeCompare(b);
   }
 
-  private loadDashboardData(): void {
-    // Fetch region structure, area labels, KPI definitions, and stored results together.
+  private loadDashboardData(months: number[] = [this.selectedMonth]): void {
+    // Fetch region structure, area labels, KPI definitions, and all requested result months together.
     if (!isPlatformBrowser(this.platformId)) {
       this.loading = false;
       return;
@@ -239,18 +298,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = null;
 
-    const month = this.selectedMonth;
+    const requestedMonths = Array.from(new Set(months.map(Number)));
     const year = this.selectedYear;
 
     forkJoin({
       regions: this.http.get<RegionApi[]>(this.regionApiBase),
       rtomAreas: this.http.get<RtomAreaApi[]>(this.rtomApiBase),
-      overall: this.http.get<OverallKpiResultApi[]>(`${this.overallKpiApiBase}?month=${month}&year=${year}`),
-      kpis: this.http.get<any[]>(`${environment.apiUrl}/kpi-definitions?month=${month}&year=${year}`)
+      overall: forkJoin(requestedMonths.map(month =>
+        this.http.get<OverallKpiResultApi[]>(`${this.overallKpiApiBase}?month=${month}&year=${year}`)
+      )),
+      // KPI definitions remain month-specific in the API; the selected month is used
+      // for the details modal while quarter meter values are aggregated below.
+      kpis: this.http.get<any[]>(`${environment.apiUrl}/kpi-definitions?month=${this.selectedMonth}&year=${year}`)
     }).subscribe({
-      next: ({ regions, rtomAreas, overall, kpis }) => {
+      next: ({ regions, rtomAreas, overall: monthlyOverallRows, kpis }) => {
         this.regionRows = regions ?? [];
-        this.overallRows = overall ?? [];
+        this.overallRows = this.activeQuarter
+          ? this.aggregateQuarterRows(monthlyOverallRows)
+          : (monthlyOverallRows[0] ?? []);
         this.kpiCategoryMap.clear();
         (kpis ?? []).forEach((kpi) => {
           this.kpiCategoryMap.set(kpi.id, kpi.category ?? '');
@@ -288,7 +353,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
         // Use one overall percentage per normalized area for the meter display.
         const percentLookup = new Map<string, number>();
-        (overall ?? []).forEach((row) => {
+        this.overallRows.forEach((row) => {
           const code = this.normalizeArea((row as any).areaCode ?? (row as any).AreaCode ?? '');
           if (!code || percentLookup.has(code)) return;
           const raw = (row as any).overallKpiValuePercent ?? (row as any).OverallKpiValuePercent ?? 0;
@@ -365,6 +430,62 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.leaCount = 0;
         this.cdr.detectChanges();
       },
+    });
+  }
+
+  private aggregateQuarterRows(monthlyRows: OverallKpiResultApi[][]): OverallKpiResultApi[] {
+    // Average each KPI area's monthly points so Q2/Q3 follows the same cumulative rule
+    // as the analytics page. Missing months are excluded from the average.
+    const groups = new Map<string, {
+      rows: OverallKpiResultApi[];
+      areaCode: string;
+      kpiDefinitionId: number;
+    }>();
+
+    monthlyRows.flat().forEach((row) => {
+      const areaCode = String((row as any).areaCode ?? (row as any).AreaCode ?? '');
+      const kpiDefinitionId = Number((row as any).kpiDefinitionId ?? (row as any).KpiDefinitionId ?? 0);
+      const key = `${this.normalizeArea(areaCode)}|${kpiDefinitionId}`;
+      const group = groups.get(key) ?? { rows: [], areaCode, kpiDefinitionId };
+      group.rows.push(row);
+      groups.set(key, group);
+    });
+
+    const aggregatedRows = Array.from(groups.values()).map(({ rows, areaCode, kpiDefinitionId }) => {
+      const average = (selector: (row: OverallKpiResultApi) => number): number => {
+        const values = rows.map(selector).filter(value => Number.isFinite(value));
+        return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+      };
+      const first = rows[0];
+
+      return {
+        ...first,
+        areaCode,
+        kpiDefinitionId,
+        // The overall percentage is recalculated below from the averaged point totals.
+        overallKpiValuePercent: 0,
+        achievedKpi: average(row => Number(row.achievedKpi)),
+        maximumPointsPerKpi: average(row => Number(row.maximumPointsPerKpi)),
+        pointsAchieved: average(row => Number(row.pointsAchieved)),
+      };
+    });
+
+    // Calculate one weighted overall percentage per area, matching AnalyticsService.
+    const areaTotals = new Map<string, { maximumPoints: number; pointsAchieved: number }>();
+    aggregatedRows.forEach((row) => {
+      const key = this.normalizeArea(row.areaCode);
+      const totals = areaTotals.get(key) ?? { maximumPoints: 0, pointsAchieved: 0 };
+      totals.maximumPoints += row.maximumPointsPerKpi;
+      totals.pointsAchieved += row.pointsAchieved;
+      areaTotals.set(key, totals);
+    });
+
+    return aggregatedRows.map((row) => {
+      const totals = areaTotals.get(this.normalizeArea(row.areaCode));
+      const overallPercent = totals && totals.maximumPoints > 0
+        ? (totals.pointsAchieved / totals.maximumPoints) * 100
+        : 0;
+      return { ...row, overallKpiValuePercent: overallPercent };
     });
   }
 
