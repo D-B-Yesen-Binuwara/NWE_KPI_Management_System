@@ -110,6 +110,15 @@ $border-radius-meter: 999px;
   margin: 4px 0 0 0;
 }
 
+.header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
 .header-filters {
   display: flex;
   gap: 16px;
@@ -177,7 +186,62 @@ $border-radius-meter: 999px;
 .header-actions {
   display: flex;
   align-items: center;
-  margin-left: auto;
+}
+
+.quarter-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quarter-btn {
+  position: relative;
+  padding: 8px 12px;
+  border: 1.5px solid rgba($slt-teal, 0.45);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  color: $slt-teal;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba($slt-teal, 0.12);
+    box-shadow: 0 4px 12px rgba($slt-teal, 0.18);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba($slt-teal, 0.3);
+    outline-offset: 2px;
+  }
+
+  &.active {
+    border-color: $slt-teal;
+    background: $slt-teal;
+    color: white;
+    box-shadow: 0 4px 12px rgba($slt-teal, 0.25);
+
+    // Red circular marker makes the currently selected quarter unmistakable.
+    &::after {
+      content: '';
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      width: 11px;
+      height: 11px;
+      border: 2px solid white;
+      border-radius: 50%;
+      background: #dc3545;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: wait;
+  }
 }
 
 .calculate-btn {
@@ -822,6 +886,12 @@ $border-radius-meter: 999px;
     flex-basis: 100%;
     min-width: 100%;
     max-width: 100%;
+  }
+
+  .header-controls {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 
   .region-title {
