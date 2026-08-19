@@ -34,7 +34,7 @@ type Region = {
 };
 //kpi rows from backend with metrics initialized to 0 (until we fetch results)
 interface KpiMetric {
-  achieved: number; // %
+  achieved: number | null; // %; null means no calculated denominator/data
   maximumPoints: number; // Points Per KPI
   pointsAchieved: number; // Points achieved (achieved % * max points / 100)
 }
@@ -370,7 +370,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
           this.kpiRows = list.map((row, rowIndex) => {
             const metrics: KpiMetric[] = this.engineersFlat.map(
               () => {
-                return { achieved: 0, maximumPoints: 0, pointsAchieved: 0 };
+                return { achieved: null, maximumPoints: 0, pointsAchieved: 0 };
               }
             );
 
@@ -476,7 +476,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
           const metrics = this.engineersFlat.map((engineer) => {
             const match = this.findOverallResultForEngineer(byKpi, engineer);
             return {
-              achieved: Number(match?.achievedKpi ?? 0),
+              achieved: match ? Number(match.achievedKpi) : null,
               maximumPoints: Number(match?.maximumPointsPerKpi ?? 0),
               pointsAchieved: Number(match?.pointsAchieved ?? 0),
             };
@@ -881,8 +881,8 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
 
       row.metrics.forEach(metric => {
         const achievedCell = worksheet.getCell(currentRow, currentCol);
-        achievedCell.value = Number((metric.achieved).toFixed(2));
-        achievedCell.numFmt = '0.00"%"';
+        achievedCell.value = metric.achieved === null ? '-' : Number(metric.achieved.toFixed(2));
+        if (metric.achieved !== null) achievedCell.numFmt = '0.00"%"';
         achievedCell.alignment = { horizontal: 'center', vertical: 'middle' };
         if (isAltRow) achievedCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: altRowBgColor } };
         achievedCell.border = {
@@ -973,7 +973,7 @@ export class CurrentMonthComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getAchievedCellClass(metric: KpiMetric): string {
     // Mark cells according to whether achieved points meet the allocated maximum.
-    if (!metric || !metric.maximumPoints || metric.maximumPoints <= 0) return '';
+    if (!metric || metric.achieved === null || !metric.maximumPoints || metric.maximumPoints <= 0) return '';
     return metric.pointsAchieved >= metric.maximumPoints ? 'target-achieved' : 'target-failed';
   }
 

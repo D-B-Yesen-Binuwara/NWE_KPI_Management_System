@@ -203,11 +203,11 @@ export class BbAnwComponent implements OnInit, OnDestroy {
 		const total = entry.totalMinutes?.[key];
 		const nodes = entry.totalNodes?.[key];
 		const hasData = [unavailable, total, nodes].some((value) => value !== undefined && value !== null);
-		if (!hasData) return '--';
+		if (!hasData) return '-';
 
 		const meta = entry.nodeMeta?.[key];
 		const pct = this.calculatePercentage(total, unavailable, nodes, meta);
-		return `${pct.toFixed(2)}%`;
+		return pct === null ? '-' : `${pct.toFixed(2)}%`;
 	}
 
 	// Gets the display string for a specific metric.
@@ -578,7 +578,7 @@ private updateDropdown3Options(province: string): void {
 	}
 
 	// Calculates the availability percentage.
-	private calculatePercentage(totalMinutes: any, unavailableMinutes: any, totalNodes: any, meta?: NodeMeta): number {
+	private calculatePercentage(totalMinutes: any, unavailableMinutes: any, totalNodes: any, meta?: NodeMeta): number | null {
 		const tm = Number(totalMinutes) || 0;
 		const um = Number(unavailableMinutes) || 0;
 		const tn = Number(totalNodes) || 0;
@@ -586,7 +586,7 @@ private updateDropdown3Options(province: string): void {
 		const totalAvailableMinutes = tm - um;
 		const days = this.getDaysInMonth(meta?.month, meta?.year);
 		const totalMin = 24 * 60 * days * tn;
-		if (totalMin <= 0) return 100;
+		if (totalMin <= 0) return null;
 
 		const pct = (100 * totalAvailableMinutes) / totalMin;
 		return Math.max(0, Math.min(100, pct));
@@ -755,7 +755,7 @@ private updateDropdown3Options(province: string): void {
 
 			areaKeys.forEach((key) => {
 				const pct = this.calculatePercentage(entry.totalMinutes?.[key], entry.unavailableMinutes?.[key], entry.totalNodes?.[key], entry.nodeMeta?.[key]);
-				row.push(isNaN(pct) ? '' : `${pct.toFixed(2)}%`);
+				row.push(pct === null ? '-' : `${pct.toFixed(2)}%`);
 				row.push(entry.unavailableMinutes?.[key] ?? '');
 				row.push(entry.totalMinutes?.[key] ?? '');
 				row.push(entry.totalNodes?.[key] ?? '');

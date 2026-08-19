@@ -243,7 +243,7 @@ ngOnInit(): void {
 				(entry as OtnOp1Entry).totalNodes?.[this.selectedKey],
 				(entry as OtnOp1Entry).metricMeta?.[this.selectedKey]
 			);
-			return isNaN(pct) ? '' : `${pct.toFixed(2)}%`;
+			return pct === null ? '-' : `${pct.toFixed(2)}%`;
 		}
 
 		const pct = this.calculatePercentageOtnOp2(
@@ -825,7 +825,7 @@ ngOnInit(): void {
 		unavailableMinutes: any,
 		totalNodes: any,
 		meta?: { month?: number; year?: number }
-	): number {
+	): number | null {
 		const tm = Number(totalMinutes) || 0;
 		const um = Number(unavailableMinutes) || 0;
 		const tn = Number(totalNodes) || 0;
@@ -833,7 +833,7 @@ ngOnInit(): void {
 		const totalAvailableMinutes = tm - um;
 		const denominator = tm > 0 ? tm : (24 * 60 * this.getDaysInMonth(meta?.year ?? this.selectedYear, meta?.month ?? this.selectedMonth) * tn);
 		if (denominator <= 0) {
-			return 100;
+			return null;
 		}
 
 		const pct = (100 * totalAvailableMinutes) / denominator;
@@ -1088,7 +1088,7 @@ ngOnInit(): void {
 						(entry as OtnOp1Entry).totalNodes?.[area],
 						(entry as OtnOp1Entry).metricMeta?.[area]
 					);
-					baseRow.push(isNaN(pct) ? '' : `${pct.toFixed(2)}%`);
+					baseRow.push(pct === null ? '-' : `${pct.toFixed(2)}%`);
 				} else {
 					const pct = this.calculatePercentageOtnOp2(
 						(entry as OtnOp2Entry).totalFailedLinks?.[area],

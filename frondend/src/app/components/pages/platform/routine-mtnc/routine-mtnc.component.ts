@@ -306,7 +306,8 @@ export class RoutineMtncComponent implements OnInit {
   // Formats a calculated placeholder percentage value for a specific column and platform.
   formatPlaceholderValue(platformKey: PlatformKey | null, column: string): string {
     if (!platformKey) return 'No data';
-    return `${this.placeholderMap[platformKey]?.[column] ?? '0.00'}%`;
+    const value = this.placeholderMap[platformKey]?.[column] ?? '-';
+    return value === '-' ? '-' : `${value}%`;
   }
 
   // Gets the appropriate display name for a column based on the region lookup map.
@@ -407,10 +408,10 @@ export class RoutineMtncComponent implements OnInit {
 
   /* ================= CALCULATIONS ================= */
 
-  // Initializes the placeholder map with default '100.00' percentages for all columns.
+  // Initializes the placeholder map with dashes when no platform period data exists.
   private buildDefaultPlaceholders(): PlaceholderMap {
     const map: PlaceholderMap = {};
-    PLATFORM_COLUMNS.forEach(c => (map[c] = '100.00'));
+    PLATFORM_COLUMNS.forEach(c => (map[c] = '-'));
     return map;
   }
 
