@@ -594,6 +594,13 @@ namespace backend.Controllers
 
                 foreach (var (area, snapshot) in areaSnapshots)
                 {
+                    // Do not persist a synthetic KPI result for an availability row with no denominator.
+                    // The frontend renders the missing result as "-".
+                    if (snapshot?.IsUnavailable == true)
+                    {
+                        continue;
+                    }
+
                     var achieved = Math.Round(Math.Clamp(snapshot?.Achieved ?? 0m, 0m, 100m), 4);
                     var maxPoints = isFibreRestoration
                         ? Math.Round(pointsPerEngineer, 4)
@@ -716,7 +723,9 @@ namespace backend.Controllers
                     if (area == string.Empty) continue;
                     var nodeWeight = GetIpNodeWeight(row, daysInMonth);
                     var achieved = CalculateAvailability(row.TotalMinutes, row.UnavailableMinutes, nodeWeight, daysInMonth);
-                    result[area] = new AreaSnapshot(achieved, nodeWeight);
+                    result[area] = achieved.HasValue
+                        ? new AreaSnapshot(achieved.Value, nodeWeight)
+                        : new AreaSnapshot(0m, nodeWeight, IsUnavailable: true);
                 }
                 return result;
             }
@@ -728,7 +737,9 @@ namespace backend.Controllers
                     var area = CanonicalizeArea(row.NodeCode, officialAreas);
                     if (area == string.Empty) continue;
                     var achieved = CalculateAvailability(row.TotalMinutes, row.UnavailableMinutes, row.TotalNodes, daysInMonth);
-                    result[area] = new AreaSnapshot(achieved, row.TotalNodes ?? 0);
+                    result[area] = achieved.HasValue
+                        ? new AreaSnapshot(achieved.Value, row.TotalNodes ?? 0)
+                        : new AreaSnapshot(0m, row.TotalNodes ?? 0, IsUnavailable: true);
                 }
                 return result;
             }
@@ -740,7 +751,9 @@ namespace backend.Controllers
                     var area = CanonicalizeArea(row.Site, officialAreas);
                     if (area == string.Empty) continue;
                     var achieved = CalculateAvailability(row.TotalMinutes, row.UnavailableMinutes, row.TotalNodes, daysInMonth);
-                    result[area] = new AreaSnapshot(achieved, row.TotalNodes);
+                    result[area] = achieved.HasValue
+                        ? new AreaSnapshot(achieved.Value, row.TotalNodes)
+                        : new AreaSnapshot(0m, row.TotalNodes, IsUnavailable: true);
                 }
                 return result;
             }
@@ -895,37 +908,37 @@ namespace backend.Controllers
         // Formula: ((TotalMinutes - UnavailableMinutes) / (24*60*days*nodes)) * 100
         // Multiple overloads support different input types (long?, int?, decimal)
         // Clamped to 0-100 range
-        // Returns 100% if denominator is 0 (no data available)
+        // Returns null if denominator is 0 (no data available)
         // =========================================================
-        private static decimal CalculateAvailability(long? totalMinutes, int? unavailableMinutes, int? totalNodes, int daysInMonth)
+        private static decimal? CalculateAvailability(long? totalMinutes, int? unavailableMinutes, int? totalNodes, int daysInMonth)
         {
             decimal tm = totalMinutes ?? 0;
             decimal um = unavailableMinutes ?? 0;
             decimal tn = totalNodes ?? 0;
 
             var denominator = tm > 0m ? tm : (24m * 60m * daysInMonth * tn);
-            if (denominator <= 0m) return 100m;
+            if (denominator <= 0m) return null;
 
             var numerator = tm - um;
             var pct = (numerator / denominator) * 100m;
             return Math.Clamp(pct, 0m, 100m);
         }
 
-        private static decimal CalculateAvailability(long? totalMinutes, int? unavailableMinutes, decimal totalNodes, int daysInMonth)
+        private static decimal? CalculateAvailability(long? totalMinutes, int? unavailableMinutes, decimal totalNodes, int daysInMonth)
         {
             decimal tm = totalMinutes ?? 0;
             decimal um = unavailableMinutes ?? 0;
             decimal tn = totalNodes;
 
             var denominator = tm > 0m ? tm : (24m * 60m * daysInMonth * tn);
-            if (denominator <= 0m) return 100m;
+            if (denominator <= 0m) return null;
 
             var numerator = tm - um;
             var pct = (numerator / denominator) * 100m;
             return Math.Clamp(pct, 0m, 100m);
         }
 
-        private static decimal CalculateAvailability(int totalMinutes, int unavailableMinutes, int totalNodes, int daysInMonth)
+        private static decimal? CalculateAvailability(int totalMinutes, int unavailableMinutes, int totalNodes, int daysInMonth)
             => CalculateAvailability((long)totalMinutes, unavailableMinutes, (int?)totalNodes, daysInMonth);
         // =========================================================
         // SLA RATIO CALCULATION
@@ -1199,7 +1212,11 @@ namespace backend.Controllers
         // AreaSnapshot: Calculated KPI value and node weight for an area
         // =========================================================
         private sealed record NamedKpi(string Source, int Id, string Name);
-        private sealed record AreaSnapshot(decimal Achieved, decimal TotalNodes, decimal? NormalizedAchieved = null);
+        private sealed record AreaSnapshot(
+            decimal Achieved,
+            decimal TotalNodes,
+            decimal? NormalizedAchieved = null,
+            bool IsUnavailable = false);
 
         // =========================================================
         // POINT CALCULATION WITH TARGET-BASED SCALING

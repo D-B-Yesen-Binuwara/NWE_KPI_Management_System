@@ -207,7 +207,7 @@ export class IpNwOpComponent implements OnInit, OnDestroy {
     }
 
     const pct = this.calculatePercentage(metric.total_minutes, metric.unavailable_minutes, metric.total_nodes);
-    return Number.isFinite(pct) ? `${pct.toFixed(2)}%` : '-';
+    return pct !== null && Number.isFinite(pct) ? `${pct.toFixed(2)}%` : '-';
   }
 
   // Gets the value for a specific metric bucket in the selected area.
@@ -453,14 +453,14 @@ export class IpNwOpComponent implements OnInit, OnDestroy {
   // KPI calculations
   // -------------------------
   // Calculates the network availability percentage.
-  calculatePercentage(totalMinutes: any, unavailableMinutes: any, totalNodes: any): number {
+  calculatePercentage(totalMinutes: any, unavailableMinutes: any, totalNodes: any): number | null {
     const tm = Number(totalMinutes) || 0;
     const um = Number(unavailableMinutes) || 0;
     const tn = Number(totalNodes) || 0;
 
     const totalAvailableMinutes = tm - um;
     const totalMin = 24 * 60 * this.daysInMonth * tn;
-    if (totalMin <= 0) return 100;
+    if (totalMin <= 0) return null;
     return (100 * totalAvailableMinutes) / totalMin;
   }
 

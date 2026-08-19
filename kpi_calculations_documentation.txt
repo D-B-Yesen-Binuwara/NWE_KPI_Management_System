@@ -188,7 +188,7 @@ C) Text Matching Overrides (Special Metrics)
      If actual < target, score is 100%. Otherwise, score = 1 - ((actual - target) / target).
 
 D) Data Fallback Behaviors
-   - Denominator Fallbacks: In availability formulas, if the calculated total minutes or node constraints result in a zero denominator, the system auto-defaults to 100% availability.
+   - Denominator Fallbacks: In availability formulas, if the calculated total minutes or node constraints result in a zero denominator, the platform display shows '-' and the overall calculation omits that unavailable result instead of awarding 100% availability.
    - KPI Definition Fallbacks: If no KPI definition exists for a selected month/year, the calculation system loads all available master definitions natively and scores against them.
 
 E) Result Refresh Behavior
